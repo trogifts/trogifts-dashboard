@@ -1,0 +1,136 @@
+Build a web-based dashboard system for a small business called "Tro Gifts", which manages a referral-based order system for crafters.
+
+The system should be simple, mobile-friendly, and optimized for free deployment. It should support multiple users (crafters) with login functionality and an admin panel for the Tro Gifts team.
+
+---
+
+USER ROLES:
+
+1. Crafter (User)
+2. Admin (Tro Gifts Team)
+
+---
+
+AUTHENTICATION:
+
+* Login using email or phone and password
+* Each crafter has a unique referral ID
+* Referral ID should be auto-linked to all orders placed by that user
+
+---
+
+CRAFTER DASHBOARD FEATURES:
+
+1. Dashboard Home:
+
+* Show total orders
+* Show total earnings
+* Show pending payout
+* Show total payout (paid earnings)
+
+2. Place New Order:
+   Form fields:
+
+* Customer Name
+* Upload Photo (high-quality image, up to 50MB, stored via external storage like Google Drive)
+* Referral ID (auto-filled from logged-in user)
+* Select Template (5 predefined options)
+* Address (multi-line)
+* Payment Screenshot upload
+* Transaction ID input
+
+After submission:
+
+* Order status = "Order Placed"
+
+3. Orders Page:
+
+* List all orders by the crafter
+* Each order shows:
+
+  * Order ID
+  * Status
+  * View uploaded photo
+  * View design (when available)
+  * Approval button (Approve / Request Changes)
+
+4. Earnings Page:
+
+* Total earnings
+* Pending payout
+* Paid earnings
+* Weekly payout tracking
+
+---
+
+ORDER STATUS FLOW:
+
+Implement the following order lifecycle:
+
+1. Order Placed
+2. Payment Submitted
+3. Payment Verified (Admin)
+4. Design Uploaded (Admin uploads design file)
+5. Waiting for Approval
+6. Approved (Crafter confirms)
+7. Printed
+8. Shipped
+9. Delivered
+
+Each status should be visible to the crafter in the dashboard.
+
+---
+
+ADMIN PANEL FEATURES:
+
+1. View all orders
+2. Filter by status
+3. View crafter details and referral ID
+4. Verify payments
+5. Upload design files (10MB typical)
+6. Update order status
+7. Mark orders as printed, shipped, delivered
+
+---
+
+FILE STORAGE:
+
+* Do NOT store large files directly in the app database
+* Integrate with external storage (Google Drive or similar)
+* Store only file links/URLs in the database
+* Support large uploads (up to 50MB for photos)
+
+---
+
+NOTIFICATIONS (basic):
+
+* Notify crafter when design is uploaded
+* Notify when order status changes
+
+---
+
+UI REQUIREMENTS:
+
+* Clean, simple UI
+* Mobile-first design (most users on phone)
+* Easy navigation:
+
+  * Dashboard
+  * Orders
+  * Place Order
+  * Earnings
+
+---
+
+TECH CONSTRAINTS:
+
+* Prefer low-code / no-code compatibility
+* Should be deployable with minimal cost
+* Avoid heavy backend complexity
+* Optimize for performance even with large file handling
+
+---
+
+GOAL:
+
+Create a scalable but simple system that avoids WhatsApp-based chaos and centralizes all orders, designs, and earnings into a single structured dashboard for both crafters and admin.
