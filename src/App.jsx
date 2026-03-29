@@ -11,6 +11,7 @@ import AdminLayout from './components/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminCrafters from './pages/admin/AdminCrafters';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 function ProtectedRoute({ children, allowedRoles }) {
   const { user } = useAuth();
@@ -66,6 +67,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <AppRoutes />
+        <SpeedInsights />
       </BrowserRouter>
     </AuthProvider>
   );
