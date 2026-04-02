@@ -9,6 +9,9 @@ export default function Orders() {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null); // { id, newStatus }
+    const [rejectReason, setRejectReason] = useState('Color scheme is incorrect');
+    const [replacementFiles, setReplacementFiles] = useState([]);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     useEffect(() => {
         async function fetchOrders() {
@@ -24,8 +27,20 @@ export default function Orders() {
         fetchOrders();
     }, [user]);
 
+    const fileToBase64 = (f) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(f);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+    };
+
     const triggerAction = (orderId, status) => {
         setConfirmAction({ id: orderId, newStatus: status });
+        setRejectReason('Color scheme is incorrect'); // Reset default
+        setReplacementFiles([]);
+        setUploadProgress(0);
     };
 
     const confirmAndExecute = async () => {
@@ -127,16 +142,40 @@ export default function Orders() {
 
             {confirmAction && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm px-4">
-                    <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col max-w-sm w-full">
+                    <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col max-w-sm w-full border-t-4 border-blue-600">
                         <h3 className="text-xl font-bold text-gray-900 mb-2">Are you sure?</h3>
-                        <p className="text-gray-600 mb-6 flex-wrap">
+                        <p className="text-gray-600 mb-4 flex-wrap">
                             You are about to <strong className={`font-bold uppercase ${confirmAction.newStatus === 'Approved' ? 'text-green-600' : 'text-red-600'}`}>{confirmAction.newStatus === 'Approved' ? 'APPROVE' : 'REJECT'}</strong> the final design.
-                            {confirmAction.newStatus === 'Approved' ? ' This signifies the design is absolutely finalized.' : ' The Admin will be notified to revise it.'}
+                            {confirmAction.newStatus === 'Approved' ? ' This signifies the design is absolutely finalized.' : ' Please select the reason for rejection below.'}
                         </p>
+
+                        {confirmAction.newStatus === 'Changes Requested' && (
+                            <div className="mb-6 space-y-4 pt-4 border-t border-gray-100">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Reason for Changes</label>
+                                    <select value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 py-2 bg-gray-50">
+                                        <option>Color scheme is incorrect</option>
+                                        <option>Spelling or Detail Error</option>
+                                        <option>Not what I envisioned</option>
+                                        <option>I want to change the raw images</option>
+                                    </select>
+                                </div>
+
+                                {rejectReason === 'I want to change the raw images' && (
+                                    <div className="bg-orange-50 p-3 rounded border border-orange-200">
+                                        <label className="block text-xs font-bold text-orange-800 mb-2">Select Replacement Images</label>
+                                        <p className="text-xs text-orange-600 mb-3">This will permanently overwrite the previous photos attached to this order.</p>
+                                        <input type="file" multiple accept="image/*" onChange={(e) => setReplacementFiles(Array.from(e.target.files))} className="block w-full text-xs file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-orange-600 file:text-white hover:file:bg-orange-700 cursor-pointer" />
+                                        {replacementFiles.length > 0 && <span className="text-xs font-bold text-orange-700 block mt-2">{replacementFiles.length} replacement files selected</span>}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         <div className="flex space-x-3 w-full">
                             <button onClick={() => setConfirmAction(null)} className="flex-1 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 font-bold transition-colors">Cancel</button>
-                            <button onClick={confirmAndExecute} disabled={!!actionLoading} className={`flex-1 py-2 text-white rounded-lg font-bold transition-colors ${actionLoading ? 'opacity-50' : ''} ${confirmAction.newStatus === 'Approved' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
-                                {actionLoading ? 'Saving...' : 'Confirm'}
+                            <button onClick={confirmAndExecute} disabled={!!actionLoading} className={`flex-1 flex justify-center items-center py-2 text-white rounded-lg font-bold transition-colors ${actionLoading ? 'opacity-50' : ''} ${confirmAction.newStatus === 'Approved' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
+                                {actionLoading ? (uploadProgress > 0 ? `Uploading (${uploadProgress}%)` : 'Saving...') : 'Confirm'}
                             </button>
                         </div>
                     </div>

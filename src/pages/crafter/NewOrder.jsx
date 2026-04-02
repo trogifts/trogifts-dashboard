@@ -70,10 +70,43 @@ export default function NewOrder() {
         setItems(newItems);
     };
 
+    const fileToBase64 = (f) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(f);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+    };
+
     const addFilesToItem = (index, newFiles) => {
+        if (!window.confirm(`Are you sure you want to safely begin uploading these ${newFiles.length} photos?`)) return;
+
         const newItems = [...items];
-        newItems[index].files = [...newItems[index].files, ...Array.from(newFiles)];
+        const newObjs = Array.from(newFiles).map(f => ({ file: f, url: null, status: 'uploading' }));
+        newItems[index].files = [...newItems[index].files, ...newObjs];
         setItems(newItems);
+
+        newObjs.forEach(async (fObj) => {
+            try {
+                const b64 = await fileToBase64(fObj.file);
+                const res = await apiCall('uploadPhoto', { fileBase64: b64, fileName: fObj.file.name, mimeType: fObj.file.type });
+                setItems(prev => {
+                    const copy = [...prev];
+                    const target = copy[index].files.find(x => x.file === fObj.file);
+                    if (target && res.success) { target.url = res.url; target.status = 'completed'; }
+                    else if (target) { target.status = 'error'; }
+                    return copy;
+                });
+            } catch (err) {
+                setItems(prev => {
+                    const copy = [...prev];
+                    const target = copy[index].files.find(x => x.file === fObj.file);
+                    if (target) target.status = 'error';
+                    return copy;
+                });
+            }
+        });
     };
 
     const removeFileFromItem = (itemIndex, fileIndex) => {
@@ -82,12 +115,18 @@ export default function NewOrder() {
         setItems(newItems);
     };
 
-    const fileToBase64 = (f) => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(f);
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
+    const handlePaymentSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setPaymentFile({ file: file, status: 'uploading', url: null });
+        fileToBase64(file).then(async (b64) => {
+            try {
+                const res = await apiCall('uploadPhoto', { fileBase64: b64, fileName: 'PAY_' + file.name, mimeType: file.type });
+                if (res.success) setPaymentFile(prev => ({ ...prev, url: res.url, status: 'completed' }));
+                else setPaymentFile(prev => ({ ...prev, status: 'error' }));
+            } catch (err) {
+                setPaymentFile(prev => ({ ...prev, status: 'error' }));
+            }
         });
     };
 
@@ -124,31 +163,55 @@ export default function NewOrder() {
             }
             if (items[i].files.length === 0) return alert(`Item #${i + 1} requires at least one customer photo`);
         }
-        if (!paymentFile) return alert('Payment screenshot is required');
+        if (!paymentFile) return alert('Payment screenshot is absolutely mandatory');
 
         setIsSubmitting(true);
-        setProgress(5);
+        // We no longer rely on fake progress since we are doing realtime blocking await
+        setProgress(10);
 
         try {
-            // Process ALL images across ALL items
-            let combinedPayloadFiles = [];
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i];
-                for (const f of item.files) {
-                    const b64 = await fileToBase64(f);
-                    combinedPayloadFiles.push({
-                        base64: b64,
-                        name: `Item${i + 1}_${item.customerName}_${f.name}`,
-                        mimeType: f.type
+            // Block until all background uploads finish natively
+            const waitForUploads = () => new Promise(resolve => {
+                const check = setInterval(() => {
+                    let allDone = true;
+                    // Check payment
+                    setPaymentFile(currentPay => {
+                        if (currentPay && currentPay.status === 'uploading') allDone = false;
+                        return currentPay;
                     });
+
+                    // Check items
+                    setItems(currentItems => {
+                        for (let i = 0; i < currentItems.length; i++) {
+                            for (let f of currentItems[i].files) {
+                                if (f.status === 'uploading') allDone = false;
+                            }
+                        }
+                        return currentItems;
+                    });
+
+                    if (allDone) {
+                        clearInterval(check);
+                        resolve();
+                    }
+                }, 800);
+            });
+
+            await waitForUploads();
+            setProgress(50); // Raw images finished
+
+            // Reconstruct final string formats for the backend payload
+            let finalPhotoString = '';
+            for (let i = 0; i < items.length; i++) {
+                if (finalPhotoString.length > 0) finalPhotoString += '\n';
+                finalPhotoString += `--- Item ${i + 1}: ${items[i].customerName} ---\n`;
+                for (const fObj of items[i].files) {
+                    if (fObj.url) finalPhotoString += fObj.url + '\n';
+                    else finalPhotoString += '[UPLOAD FAILED]\n';
                 }
             }
 
-            let payBase64 = null;
-            if (paymentFile) {
-                payBase64 = await fileToBase64(paymentFile);
-            }
-            setProgress(35); // Converted
+            setProgress(60);
 
             const ObjectFinancials = financials();
 
@@ -165,28 +228,21 @@ export default function NewOrder() {
                 template: allTemplates || 'N/A',
                 address: isMultipleAddresses ? allAddresses : formData.address,
                 referralId: user.referral_id,
-                files: combinedPayloadFiles,
-                paymentFileBase64: payBase64,
-                paymentFileName: paymentFile ? paymentFile.name : null,
-                paymentMimeType: paymentFile ? paymentFile.type : null,
+                finalPhotoString: finalPhotoString,
+                paymentUrl: paymentFile.url,
                 price: ObjectFinancials.price,
                 originalPrice: ObjectFinancials.originalPrice,
                 commission: ObjectFinancials.commission
             };
 
-            // Fake interval
-            const interval = setInterval(() => {
-                setProgress(p => Math.min(p + Math.floor(Math.random() * 8) + 2, 90));
-            }, 500);
-
+            setProgress(80);
             await apiCall('createOrder', payload);
 
-            clearInterval(interval);
             setProgress(100);
             setSuccess(true);
             setTimeout(() => {
-                items.forEach(item => item.files.forEach(f => URL.revokeObjectURL(f)));
-                if (paymentFile) URL.revokeObjectURL(paymentFile);
+                items.forEach(item => item.files.forEach(fObj => URL.revokeObjectURL(fObj.file)));
+                if (paymentFile && paymentFile.file) URL.revokeObjectURL(paymentFile.file);
                 navigate('/dashboard/orders');
             }, 2000);
         } catch (error) {
@@ -332,9 +388,22 @@ export default function NewOrder() {
 
                                     {item.files.length > 0 && (
                                         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3 mt-3">
-                                            {item.files.map((f, fi) => (
-                                                <div key={fi} className="relative aspect-square rounded-md border border-gray-200 overflow-hidden group shadow-sm">
-                                                    <img src={URL.createObjectURL(f)} alt="preview" className="object-cover w-full h-full" />
+                                            {item.files.map((fObj, fi) => (
+                                                <div key={fi} className="relative aspect-square rounded-md border border-gray-200 overflow-hidden group shadow-sm bg-gray-100">
+                                                    <img src={URL.createObjectURL(fObj.file)} alt="preview" className="object-cover w-full h-full" />
+
+                                                    {/* Background Status Indicator */}
+                                                    {fObj.status === 'uploading' && (
+                                                        <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                                                            <Loader2 size={16} className="text-blue-600 animate-spin" />
+                                                        </div>
+                                                    )}
+                                                    {fObj.status === 'completed' && (
+                                                        <div className="absolute inset-0 bg-green-500/20 pointer-events-none flex items-end justify-center pb-1">
+                                                            <CheckCircle size={14} className="text-green-700 bg-white rounded-full" />
+                                                        </div>
+                                                    )}
+
                                                     <button type="button" onClick={() => removeFileFromItem(index, fi)} className="absolute top-1 right-1 bg-red-500/90 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <X size={12} />
                                                     </button>
@@ -392,20 +461,32 @@ export default function NewOrder() {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Payment Screenshot</label>
-                                <input type="file" onChange={e => setPaymentFile(e.target.files[0])} accept="image/*" required className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-300 rounded-md p-1" />
+                                <input type="file" onChange={handlePaymentSelect} accept="image/*" required className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-300 rounded-md p-1" />
+                                {paymentFile && paymentFile.status === 'uploading' && <span className="text-xs text-blue-600 mt-1 block flex items-center"><Loader2 size={12} className="animate-spin mr-1" /> Uploading securely in background...</span>}
+                                {paymentFile && paymentFile.status === 'completed' && <span className="text-xs text-green-600 mt-1 block flex items-center font-bold"><CheckCircle size={12} className="mr-1" /> Successfully uploaded securely</span>}
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {isSubmitting && (
-                    <div className="pt-2">
-                        <div className="flex justify-between text-xs text-gray-500 mb-1 font-medium">
-                            <span>{progress < 35 ? 'Consolidating images...' : 'Uploading securely to backend...'}</span>
-                            <span>{progress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                            <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
+                    <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center backdrop-blur-sm px-4">
+                        <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center text-center max-w-sm w-full border-t-8 border-blue-600">
+                            <Loader2 className="w-14 h-14 text-blue-600 animate-spin mb-4" />
+                            <h3 className="text-2xl font-black text-gray-900 uppercase">Saving Order</h3>
+                            <p className="text-sm text-gray-500 mt-2 font-bold bg-yellow-100 text-yellow-800 py-1 px-3 rounded-full border border-yellow-200">
+                                ⚠️ DO NOT CLOSE THIS TAB OR BROWSER
+                            </p>
+
+                            <div className="w-full mt-6">
+                                <div className="flex justify-between text-xs text-gray-500 mb-1 font-bold">
+                                    <span>{progress < 50 ? 'Waiting for images to finish...' : 'Pushing databases...'}</span>
+                                    <span>{progress}%</span>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
+                                    <div className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

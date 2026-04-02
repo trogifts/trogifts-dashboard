@@ -21,6 +21,10 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(handleUpdateOrderStatus(data))).setMimeType(ContentService.MimeType.JSON);
     } else if (action === 'uploadDesign') {
       return handleUploadDesign(data, headers);
+    } else if (action === 'uploadPhoto') {
+      return handleUploadPhoto(data, headers);
+    } else if (action === 'updateOrderPhotos') {
+      return handleUpdateOrderPhotos(data, headers);
     } else if (action === 'submitPayout') {
       return ContentService.createTextOutput(JSON.stringify(handleSubmitPayout(data))).setMimeType(ContentService.MimeType.JSON);
     } else if (action === 'updateCrafterStatus') {
@@ -122,28 +126,6 @@ function handleCreateOrder(data, headers) {
     // Generate unique order ID
     const orderId = 'ORD-' + Math.floor(10000 + Math.random() * 90000);
     
-    let photoUrls = [];
-    let finalPhotoString = '';
-    let currentGroup = '';
-
-    if (data.files && data.files.length > 0) {
-      for (const f of data.files) {
-        if (f.groupTitle && f.groupTitle !== currentGroup) {
-          currentGroup = f.groupTitle;
-          if (finalPhotoString.length > 0) finalPhotoString += '\n'; // Add space between previous
-          finalPhotoString += `--- ${currentGroup} ---\n`;
-        }
-        let url = uploadFileToDrive(f.base64, f.name, f.mimeType);
-        finalPhotoString += url + '\n';
-      }
-    } else if (data.fileBase64) {
-      finalPhotoString = uploadFileToDrive(data.fileBase64, data.customerName + '_' + data.fileName, data.mimeType);
-    }
-    let paymentUrl = '';
-    if (data.paymentFileBase64) {
-      paymentUrl = uploadFileToDrive(data.paymentFileBase64, 'PAYMENT_' + data.customerName + '_' + data.paymentFileName, data.paymentMimeType);
-    }
-    
     // Columns: [0]Order_ID, [1]Crafter_Ref, [2]Customer, [3]Address, [4]Template, [5]Transaction_ID, [6]Status, [7]Photo_URL, [8]Design_URL, [9]Date, [10]Delivery_Method, [11]Quantity, [12]Price, [13]Commission, [14]Payment_URL
     sheet.appendRow([
       orderId, 
@@ -153,14 +135,14 @@ function handleCreateOrder(data, headers) {
       data.template, 
       data.transactionId, 
       'Order Placed', 
-      finalPhotoString, 
+      data.finalPhotoString || '', // Prefetched frontend formatted string
       '', 
       new Date(),
       data.deliveryMethod,
       data.quantity,
       data.price,
       data.commission,
-      paymentUrl
+      data.paymentUrl || '' // Prefetched frontend payment string
     ]);
     
     return successResponse({ success: true, orderId }, headers);
@@ -227,12 +209,41 @@ function handleUploadDesign(data, headers) {
     // Upload file
     const url = uploadFileToDrive(data.fileBase64, data.fileName, data.mimeType, 'TroGifts_CompletedDesigns');
     
-    // Find order and update Col 8 (Index 8, Column I)
+    // Find order and update Col 8 (Index 8, Column I) and Status (Index 6, Column G)
     const rows = sheet.getDataRange().getValues();
     for (let i = 1; i < rows.length; i++) {
         if (rows[i][0] === data.orderId) {
             sheet.getRange(i + 1, 9).setValue(url);
-            return successResponse({ success: true, url: url, orderId: data.orderId }, headers);
+            sheet.getRange(i + 1, 7).setValue('Waiting for Approval');
+            return successResponse({ success: true, url: url, orderId: data.orderId, status: 'Waiting for Approval' }, headers);
+        }
+    }
+    return errorResponse('Order not found', headers);
+  } catch (error) {
+    return errorResponse(error.message, headers);
+  }
+}
+
+function handleUploadPhoto(data, headers) {
+  try {
+    const url = uploadFileToDrive(data.fileBase64, data.fileName, data.mimeType, 'TroGifts_IncomingPhoto');
+    return successResponse({ success: true, url: url, identifier: data.identifier }, headers);
+  } catch (error) {
+    return errorResponse(error.message, headers);
+  }
+}
+
+function handleUpdateOrderPhotos(data, headers) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Orders');
+    if (!sheet) return errorResponse('Orders sheet not found', headers);
+    
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+        if (rows[i][0] === data.orderId) {
+            sheet.getRange(i + 1, 8).setValue(data.photoUrlString); // Index 7, Col 8 is Photo_URL
+            sheet.getRange(i + 1, 7).setValue('Order Placed'); // Reset status safely
+            return successResponse({ success: true, orderId: data.orderId }, headers);
         }
     }
     return errorResponse('Order not found', headers);
