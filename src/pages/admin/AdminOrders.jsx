@@ -9,6 +9,7 @@ export default function AdminOrders() {
     const [inspectOrder, setInspectOrder] = useState(null);
     const [toastMessage, setToastMessage] = useState(null);
     const [uploadingOrder, setUploadingOrder] = useState(null);
+    const [actionLoading, setActionLoading] = useState(false);
 
     const statuses = ['All', 'Order Placed', 'Payment Verify', 'Waiting for Approval', 'Changes Requested', 'Approved', 'Printed', 'Shipped', 'Delivered'];
 
@@ -32,6 +33,7 @@ export default function AdminOrders() {
         : orders.filter(o => o.status === statusFilter);
 
     const updateStatus = async (id, newStatus) => {
+        setActionLoading(true);
         // Optimistic update
         setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
         try {
@@ -42,6 +44,8 @@ export default function AdminOrders() {
             console.error("Failed to update status", err);
             setToastMessage(`Failed to update ${id}! Check network.`);
             setTimeout(() => setToastMessage(null), 4000);
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -57,6 +61,7 @@ export default function AdminOrders() {
         if (!file) return;
 
         setUploadingOrder(orderId);
+        setActionLoading(true);
         try {
             const base64 = await fileToBase64(file);
             const res = await apiCall('uploadDesign', {
@@ -69,7 +74,7 @@ export default function AdminOrders() {
             if (res.success) {
                 setToastMessage(`Design successfully securely attached to ${orderId}`);
                 setTimeout(() => setToastMessage(null), 4000);
-                setOrders(orders.map(o => o.id === orderId ? { ...o, designUrl: res.url } : o));
+                setOrders(orders.map(o => o.id === orderId ? { ...o, designUrl: res.url, status: res.status || 'Waiting for Approval' } : o));
             } else {
                 throw new Error(res.error || "API reported failure");
             }
@@ -81,6 +86,7 @@ export default function AdminOrders() {
             // Reset input so they can re-upload if needed
             e.target.value = null;
             setUploadingOrder(null);
+            setActionLoading(false);
         }
     };
 

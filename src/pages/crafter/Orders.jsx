@@ -8,6 +8,7 @@ export default function Orders() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
+    const [confirmAction, setConfirmAction] = useState(null); // { id, newStatus }
 
     useEffect(() => {
         async function fetchOrders() {
@@ -23,17 +24,25 @@ export default function Orders() {
         fetchOrders();
     }, [user]);
 
-    const handleAction = async (orderId, status) => {
-        setActionLoading(orderId);
+    const triggerAction = (orderId, status) => {
+        setConfirmAction({ id: orderId, newStatus: status });
+    };
+
+    const confirmAndExecute = async () => {
+        if (!confirmAction) return;
+        const { id, newStatus } = confirmAction;
+
+        setActionLoading(id);
         try {
-            const res = await apiCall('updateOrderStatus', { orderId, status });
+            const res = await apiCall('updateOrderStatus', { orderId: id, status: newStatus });
             if (res.success) {
-                setOrders(orders.map(o => o.id === orderId ? { ...o, status } : o));
+                setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
             }
         } catch (err) {
             console.error("Failed to update status", err);
         } finally {
             setActionLoading(null);
+            setConfirmAction(null);
         }
     };
 
@@ -97,10 +106,10 @@ export default function Orders() {
                                                         <span className="text-xs text-gray-500 animate-pulse font-bold">Updating...</span>
                                                     ) : (
                                                         <>
-                                                            <button onClick={() => handleAction(order.id, 'Approved')} className="text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded shadow-sm text-xs font-bold transition-colors">
+                                                            <button onClick={() => triggerAction(order.id, 'Approved')} className="text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded shadow-sm text-xs font-bold transition-colors">
                                                                 Approve
                                                             </button>
-                                                            <button onClick={() => handleAction(order.id, 'Changes Requested')} className="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded shadow-sm text-xs font-bold transition-colors">
+                                                            <button onClick={() => triggerAction(order.id, 'Changes Requested')} className="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded shadow-sm text-xs font-bold transition-colors">
                                                                 Reject
                                                             </button>
                                                         </>
@@ -115,6 +124,24 @@ export default function Orders() {
                     </table>
                 </div>
             </div>
+
+            {confirmAction && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm px-4">
+                    <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col max-w-sm w-full">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Are you sure?</h3>
+                        <p className="text-gray-600 mb-6 flex-wrap">
+                            You are about to <strong className={`font-bold uppercase ${confirmAction.newStatus === 'Approved' ? 'text-green-600' : 'text-red-600'}`}>{confirmAction.newStatus === 'Approved' ? 'APPROVE' : 'REJECT'}</strong> the final design.
+                            {confirmAction.newStatus === 'Approved' ? ' This signifies the design is absolutely finalized.' : ' The Admin will be notified to revise it.'}
+                        </p>
+                        <div className="flex space-x-3 w-full">
+                            <button onClick={() => setConfirmAction(null)} className="flex-1 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 font-bold transition-colors">Cancel</button>
+                            <button onClick={confirmAndExecute} disabled={!!actionLoading} className={`flex-1 py-2 text-white rounded-lg font-bold transition-colors ${actionLoading ? 'opacity-50' : ''} ${confirmAction.newStatus === 'Approved' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
+                                {actionLoading ? 'Saving...' : 'Confirm'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
