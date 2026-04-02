@@ -83,6 +83,38 @@ export default function NewOrder() {
         setItems(newItems);
     };
 
+    const compressPaymentScreenshot = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1200;
+                    const MAX_HEIGHT = 1200;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                    } else {
+                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.70));
+                };
+                img.onerror = () => resolve(event.target.result);
+            };
+            reader.onerror = error => reject(error);
+        });
+    };
+
     const processImageFile = (file) => {
         return new Promise((resolve, reject) => {
             if (file.type !== 'image/jpeg' && file.type !== 'image/webp' && file.type !== 'image/jpg') {
@@ -195,10 +227,13 @@ export default function NewOrder() {
     const handlePaymentSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        setPaymentFile({ file: file, status: 'uploading', url: null });
-        processImageFile(file).then(async (b64) => {
+        setPaymentFile({ file: file, status: 'uploading', uploadProgress: 0, url: null });
+        compressPaymentScreenshot(file).then(async (b64) => {
             try {
-                const res = await apiCall('uploadPhoto', { fileBase64: b64, fileName: 'PAY_' + file.name, mimeType: file.type });
+                // Apply the new XHR wrapper for tracking upload progress
+                const res = await apiCall('uploadPhoto', { fileBase64: b64, fileName: 'PAY_' + file.name, mimeType: 'image/jpeg' }, (percent) => {
+                    setPaymentFile(prev => ({ ...prev, uploadProgress: percent }));
+                });
                 if (res.success) setPaymentFile(prev => ({ ...prev, url: res.url, status: 'completed' }));
                 else setPaymentFile(prev => ({ ...prev, status: 'error' }));
             } catch (err) {
@@ -283,11 +318,29 @@ export default function NewOrder() {
 
             await waitForUploads();
             setProgress(50); // Raw images finished
+
+            const currentItems = itemsRef.current;
+            const currentPay = paymentFileRef.current;
+
+            // Abort submission if any background upload failed over the network
+            let hasErrors = false;
+            if (currentPay && currentPay.status === 'error') hasErrors = true;
+            for (let i = 0; i < currentItems.length; i++) {
+                for (let f of currentItems[i].files) {
+                    if (f.status === 'error') hasErrors = true;
+                }
+            }
+
+            if (hasErrors) {
+                setIsSubmitting(false);
+                setProgress(0);
+                alert('One or more files failed to upload to the server. Please check the files marked in red, remove them, and try uploading again.');
+                return;
+            }
+
             setUploadStatusMsg('Pushing order to robust servers...');
 
             // Reconstruct final string formats for the backend payload
-            const currentItems = itemsRef.current;
-            const currentPay = paymentFileRef.current;
 
             let finalPhotoString = '';
             for (let i = 0; i < currentItems.length; i++) {
