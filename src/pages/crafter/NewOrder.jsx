@@ -290,18 +290,29 @@ export default function NewOrder() {
                 const check = setInterval(() => {
                     let total = 0;
                     let completed = 0;
+                    let totalProgress = 0; // Tracks 0-100 per file
 
                     const currentPay = paymentFileRef.current;
                     if (currentPay) {
                         total++;
-                        if (currentPay.status === 'completed' || currentPay.status === 'error') completed++;
+                        if (currentPay.status === 'completed' || currentPay.status === 'error') {
+                            completed++;
+                            totalProgress += 100;
+                        } else {
+                            totalProgress += (currentPay.uploadProgress || 0);
+                        }
                     }
 
                     const currentItems = itemsRef.current;
                     for (let i = 0; i < currentItems.length; i++) {
                         for (let f of currentItems[i].files) {
                             total++;
-                            if (f.status === 'completed' || f.status === 'error') completed++;
+                            if (f.status === 'completed' || f.status === 'error') {
+                                completed++;
+                                totalProgress += 100;
+                            } else {
+                                totalProgress += (f.uploadProgress || 0);
+                            }
                         }
                     }
 
@@ -309,13 +320,14 @@ export default function NewOrder() {
                         clearInterval(check);
                         resolve();
                     } else if (total > 0) {
-                        setProgress(Math.floor(10 + (completed / total) * 40));
+                        const imagesPercent = totalProgress / (total * 100);
+                        setProgress(Math.floor(10 + (imagesPercent * 40)));
                         setUploadStatusMsg(`Uploading images... (${completed}/${total})`);
                     } else {
                         clearInterval(check);
                         resolve();
                     }
-                }, 800);
+                }, 100);
             });
 
             await waitForUploads();
