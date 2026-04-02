@@ -26,49 +26,28 @@ export const apiCall = async (action, data = {}, onProgress = null) => {
         } else {
             // Use POST for backend doPost
             const payload = { action, ...data };
+            response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify(payload),
+            });
 
+            // If simulated progress was requested alongside a standard fetch
             if (onProgress) {
-                return new Promise((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('POST', SCRIPT_URL, true);
-                    xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
-
-                    xhr.upload.onprogress = (event) => {
-                        if (event.lengthComputable) {
-                            const percentComplete = Math.round((event.loaded / event.total) * 100);
-                            onProgress(percentComplete);
-                        }
-                    };
-
-                    xhr.onload = () => {
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            try {
-                                const result = JSON.parse(xhr.responseText);
-                                if (result.error) reject(new Error(result.error));
-                                else resolve(result);
-                            } catch (e) {
-                                reject(e);
-                            }
-                        } else {
-                            reject(new Error(`HTTP Error: ${xhr.status}`));
-                        }
-                    };
-
-                    xhr.onerror = () => reject(new Error('Network Error'));
-                    xhr.send(JSON.stringify(payload));
-                });
-            } else {
-                response = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8',
-                    },
-                    body: JSON.stringify(payload),
-                });
+                let p = 0;
+                const int = setInterval(() => {
+                    p += (100 - p) * 0.2;
+                    if (p > 95) p = 95;
+                    onProgress(Math.floor(p));
+                }, 300);
+                setTimeout(() => clearInterval(int), 30000); // safety clear
             }
         }
 
         const result = await response.json();
+        if (onProgress) onProgress(100);
         if (result.error) throw new Error(result.error);
         return result;
     } catch (error) {
