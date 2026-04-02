@@ -83,48 +83,46 @@ export default function NewOrder() {
         setItems(newItems);
     };
 
-    const fileToBase64 = (f) => {
+    const processImageFile = (file) => {
         return new Promise((resolve, reject) => {
-            if (!f.type.startsWith('image/')) {
+            if (file.type !== 'image/jpeg' && file.type !== 'image/webp' && file.type !== 'image/jpg') {
                 const reader = new FileReader();
-                reader.readAsDataURL(f);
+                reader.readAsDataURL(file);
                 reader.onload = () => resolve(reader.result);
                 reader.onerror = error => reject(error);
                 return;
             }
 
             const reader = new FileReader();
-            reader.readAsDataURL(f);
-            reader.onload = (e) => {
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
                 const img = new Image();
-                img.src = e.target.result;
+                img.src = event.target.result;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1200;
-                    const MAX_HEIGHT = 1200;
+                    const MAX_WIDTH = 3500;
+                    const MAX_HEIGHT = 3500;
                     let width = img.width;
                     let height = img.height;
 
                     if (width > height) {
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                     } else {
-                        if (height > MAX_HEIGHT) {
-                            width *= MAX_HEIGHT / height;
-                            height = MAX_HEIGHT;
-                        }
+                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                    }
+
+                    if (width >= img.width && height >= img.height && file.size < 2000000) {
+                        resolve(event.target.result);
+                        return;
                     }
 
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-
-                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    resolve(canvas.toDataURL('image/jpeg', 0.92));
                 };
-                img.onerror = error => reject(error);
+                img.onerror = () => resolve(event.target.result);
             };
             reader.onerror = error => reject(error);
         });
@@ -134,7 +132,7 @@ export default function NewOrder() {
         setPendingUploads({ index, newFiles });
     };
 
-    const confirmPendingUploads = () => {
+    const confirmPendingUploads = async () => {
         if (!pendingUploads) return;
         const { index, newFiles } = pendingUploads;
 
@@ -142,13 +140,15 @@ export default function NewOrder() {
         const newObjs = Array.from(newFiles).map(f => ({ file: f, url: null, status: 'uploading' }));
         newItems[index].files = [...newItems[index].files, ...newObjs];
         setItems(newItems);
+        setPendingUploads(null);
 
-        newObjs.forEach(async (fObj) => {
+        for (const fObj of newObjs) {
             try {
-                const b64 = await fileToBase64(fObj.file);
+                const b64 = await processImageFile(fObj.file);
                 const res = await apiCall('uploadPhoto', { fileBase64: b64, fileName: fObj.file.name, mimeType: fObj.file.type });
                 setItems(prev => {
                     const copy = [...prev];
+                    if (!copy[index]) return copy;
                     const target = copy[index].files.find(x => x.file === fObj.file);
                     if (target && res.success) { target.url = res.url; target.status = 'completed'; }
                     else if (target) { target.status = 'error'; }
@@ -157,14 +157,13 @@ export default function NewOrder() {
             } catch (err) {
                 setItems(prev => {
                     const copy = [...prev];
+                    if (!copy[index]) return copy;
                     const target = copy[index].files.find(x => x.file === fObj.file);
                     if (target) target.status = 'error';
                     return copy;
                 });
             }
-        });
-
-        setPendingUploads(null);
+        }
     };
 
     const removeFileFromItem = (itemIndex, fileIndex) => {
@@ -177,7 +176,7 @@ export default function NewOrder() {
         const file = e.target.files[0];
         if (!file) return;
         setPaymentFile({ file: file, status: 'uploading', url: null });
-        fileToBase64(file).then(async (b64) => {
+        processImageFile(file).then(async (b64) => {
             try {
                 const res = await apiCall('uploadPhoto', { fileBase64: b64, fileName: 'PAY_' + file.name, mimeType: file.type });
                 if (res.success) setPaymentFile(prev => ({ ...prev, url: res.url, status: 'completed' }));
