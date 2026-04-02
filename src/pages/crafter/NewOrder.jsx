@@ -143,9 +143,29 @@ export default function NewOrder() {
         setPendingUploads(null);
 
         for (const fObj of newObjs) {
+            setItems(prev => {
+                const copy = [...prev];
+                if (!copy[index]) return copy;
+                const target = copy[index].files.find(x => x.file === fObj.file);
+                if (target) { target.status = 'uploading'; target.uploadProgress = 0; }
+                return copy;
+            });
+
             try {
+                // Pre-process (compress) the file before uploading
                 const b64 = await processImageFile(fObj.file);
-                const res = await apiCall('uploadPhoto', { fileBase64: b64, fileName: fObj.file.name, mimeType: fObj.file.type });
+                const res = await apiCall('uploadPhoto', { fileBase64: b64, fileName: fObj.file.name, mimeType: fObj.file.type }, (percent) => {
+                    setItems(prev => {
+                        const copy = [...prev];
+                        if (!copy[index]) return copy;
+                        const target = copy[index].files.find(x => x.file === fObj.file);
+                        if (target && target.status === 'uploading') {
+                            target.uploadProgress = percent;
+                        }
+                        return copy;
+                    });
+                });
+
                 setItems(prev => {
                     const copy = [...prev];
                     if (!copy[index]) return copy;
@@ -467,9 +487,11 @@ export default function NewOrder() {
                                                         </div>
                                                     )}
                                                     {fObj.status === 'uploading' && (
-                                                        <div className="absolute inset-0 bg-white/60 flex flex-col items-center justify-center pointer-events-none z-10">
-                                                            <Loader2 size={16} className="text-blue-600 animate-spin mb-1" />
-                                                            <span className="text-[10px] font-bold text-blue-700 uppercase tracking-widest leading-none drop-shadow-sm">Sending</span>
+                                                        <div className="absolute inset-0 bg-white/70 flex flex-col items-center justify-center pointer-events-none z-10 p-2">
+                                                            <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1.5 overflow-hidden">
+                                                                <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-150" style={{ width: `${fObj.uploadProgress || 0}%` }}></div>
+                                                            </div>
+                                                            <span className="text-[10px] font-bold text-blue-700 uppercase tracking-widest leading-none drop-shadow-sm">{fObj.uploadProgress || 0}%</span>
                                                         </div>
                                                     )}
                                                     {fObj.status === 'completed' && (
@@ -536,8 +558,18 @@ export default function NewOrder() {
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Payment Screenshot</label>
                                 <input type="file" onChange={handlePaymentSelect} accept="image/*" required className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-300 rounded-md p-1" />
-                                {paymentFile && paymentFile.status === 'uploading' && <span className="text-xs text-blue-600 mt-1 block flex items-center"><Loader2 size={12} className="animate-spin mr-1" /> Uploading securely in background...</span>}
-                                {paymentFile && paymentFile.status === 'completed' && <span className="text-xs text-green-600 mt-1 block flex items-center font-bold"><CheckCircle size={12} className="mr-1" /> Successfully uploaded securely</span>}
+                                {paymentFile && paymentFile.status === 'uploading' && (
+                                    <div className="mt-2 text-xs text-blue-600 border border-blue-100 bg-blue-50/50 rounded-md p-2">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="flex items-center font-bold"><Loader2 size={12} className="animate-spin mr-1.5" /> Uploading securely</span>
+                                            <span className="font-bold">{paymentFile.uploadProgress || 0}%</span>
+                                        </div>
+                                        <div className="w-full bg-blue-100 rounded-full h-1.5 overflow-hidden">
+                                            <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-150" style={{ width: `${paymentFile.uploadProgress || 0}%` }}></div>
+                                        </div>
+                                    </div>
+                                )}
+                                {paymentFile && paymentFile.status === 'completed' && <span className="text-xs text-green-600 mt-2 block flex items-center font-bold"><CheckCircle size={12} className="mr-1" /> Successfully uploaded securely</span>}
                             </div>
                         </div>
                     </div>

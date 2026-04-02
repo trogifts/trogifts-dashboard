@@ -1,10 +1,10 @@
 // Replace this with the URL you get after deploying backend.gs as a Web App
 export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyVy6ngWzi9V6ydzxPKX21xvNCcWcEYBJvelrqkLRJiLjzSEzJd0t7ZUmzXXVD0kEOy/exec';
 
-export const apiCall = async (action, data = {}) => {
+export const apiCall = async (action, data = {}, onProgress = null) => {
     if (SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
         console.warn('API URL not configured. Using fallback mocked response for action:', action);
-        return mockApiCall(action, data);
+        return mockApiCall(action, data, onProgress);
     }
 
     try {
@@ -26,13 +26,46 @@ export const apiCall = async (action, data = {}) => {
         } else {
             // Use POST for backend doPost
             const payload = { action, ...data };
-            response = await fetch(SCRIPT_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
-                body: JSON.stringify(payload),
-            });
+
+            if (onProgress) {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', SCRIPT_URL, true);
+                    xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+
+                    xhr.upload.onprogress = (event) => {
+                        if (event.lengthComputable) {
+                            const percentComplete = Math.round((event.loaded / event.total) * 100);
+                            onProgress(percentComplete);
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            try {
+                                const result = JSON.parse(xhr.responseText);
+                                if (result.error) reject(new Error(result.error));
+                                else resolve(result);
+                            } catch (e) {
+                                reject(e);
+                            }
+                        } else {
+                            reject(new Error(`HTTP Error: ${xhr.status}`));
+                        }
+                    };
+
+                    xhr.onerror = () => reject(new Error('Network Error'));
+                    xhr.send(JSON.stringify(payload));
+                });
+            } else {
+                response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8',
+                    },
+                    body: JSON.stringify(payload),
+                });
+            }
         }
 
         const result = await response.json();
@@ -48,9 +81,16 @@ export const apiCall = async (action, data = {}) => {
 // Fallback Mock System (Until URL is provided)
 // ==========================================
 
-const mockApiCall = async (action, data) => {
+const mockApiCall = async (action, data, onProgress) => {
     // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+    if (onProgress) {
+        for (let i = 10; i <= 100; i += 20) {
+            await new Promise(resolve => setTimeout(resolve, 150));
+            onProgress(i);
+        }
+    } else {
+        await new Promise(resolve => setTimeout(resolve, 800));
+    }
 
     if (action === 'login') {
         if (data.email.includes('admin')) return { uid: '1', role: 'admin', name: 'Admin', email: data.email };
