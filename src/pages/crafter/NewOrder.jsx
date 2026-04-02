@@ -23,6 +23,7 @@ export default function NewOrder() {
     const [paymentFile, setPaymentFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [uploadStatusMsg, setUploadStatusMsg] = useState('Initializing databases...');
     const [success, setSuccess] = useState(false);
     const [pendingUploads, setPendingUploads] = useState(null);
     const [upiId, setUpiId] = useState('yourupi@bank');
@@ -178,13 +179,19 @@ export default function NewOrder() {
         setProgress(10);
 
         try {
+            setUploadStatusMsg('Verifying active uploads...');
             // Block until all background uploads finish natively
             const waitForUploads = () => new Promise(resolve => {
                 const check = setInterval(() => {
-                    let allDone = true;
+                    let total = 0;
+                    let completed = 0;
+
                     // Check payment
                     setPaymentFile(currentPay => {
-                        if (currentPay && currentPay.status === 'uploading') allDone = false;
+                        if (currentPay) {
+                            total++;
+                            if (currentPay.status === 'completed' || currentPay.status === 'error') completed++;
+                        }
                         return currentPay;
                     });
 
@@ -192,13 +199,20 @@ export default function NewOrder() {
                     setItems(currentItems => {
                         for (let i = 0; i < currentItems.length; i++) {
                             for (let f of currentItems[i].files) {
-                                if (f.status === 'uploading') allDone = false;
+                                total++;
+                                if (f.status === 'completed' || f.status === 'error') completed++;
                             }
                         }
                         return currentItems;
                     });
 
-                    if (allDone) {
+                    if (total > 0 && total === completed) {
+                        clearInterval(check);
+                        resolve();
+                    } else if (total > 0) {
+                        setProgress(Math.floor(10 + (completed / total) * 40));
+                        setUploadStatusMsg(`Uploading images... (${completed}/${total})`);
+                    } else {
                         clearInterval(check);
                         resolve();
                     }
@@ -207,6 +221,7 @@ export default function NewOrder() {
 
             await waitForUploads();
             setProgress(50); // Raw images finished
+            setUploadStatusMsg('Pushing order to robust servers...');
 
             // Reconstruct final string formats for the backend payload
             let finalPhotoString = '';
@@ -488,7 +503,7 @@ export default function NewOrder() {
 
                             <div className="w-full mt-6">
                                 <div className="flex justify-between text-xs text-gray-500 mb-1 font-bold">
-                                    <span>{progress < 50 ? 'Waiting for images to finish...' : 'Pushing databases...'}</span>
+                                    <span>{uploadStatusMsg}</span>
                                     <span>{progress}%</span>
                                 </div>
                                 <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
