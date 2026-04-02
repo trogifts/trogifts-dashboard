@@ -667,14 +667,20 @@ export default function NewOrder() {
                                         ⚠️ DO NOT CLOSE THIS TAB OR BROWSER
                                     </p>
 
-                                    <div className="w-full mt-6">
+                                    <div className="w-full mt-8 relative">
                                         <div className="flex justify-between text-xs text-gray-500 mb-1 font-bold">
                                             <span>{uploadStatusMsg}</span>
                                             <span>{progress}%</span>
                                         </div>
-                                        <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
-                                            <div className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
+                                        <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner relative">
+                                            <div className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out relative" style={{ width: `${progress}%` }}>
+                                                {/* Indeterminate moving glare over the progress bar for continuous movement illusion */}
+                                                <div className="absolute top-0 bottom-0 left-0 w-full overflow-hidden rounded-full pointer-events-none">
+                                                    <div className="w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-20deg] animate-[ping_1.5s_ease-in-out_infinite]" style={{ transform: 'translateX(-100%)', animation: 'slide-right 1.5s infinite' }} />
+                                                </div>
+                                            </div>
                                         </div>
+                                        <p className="text-[10px] font-bold text-blue-500/70 mt-3 animate-pulse text-center tracking-widest uppercase mb-[-12px]">Please hold, establishing secure tunnels...</p>
                                     </div>
                                 </>
                             )}
