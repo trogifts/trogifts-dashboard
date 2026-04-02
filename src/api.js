@@ -1,6 +1,14 @@
 // Replace this with the URL you get after deploying backend.gs as a Web App
 export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyVy6ngWzi9V6ydzxPKX21xvNCcWcEYBJvelrqkLRJiLjzSEzJd0t7ZUmzXXVD0kEOy/exec';
 
+// ==========================================
+// BLAZING FAST IMAGE STORAGE UPLOAD (RECOMMENDED)
+// 1. Go to https://api.imgbb.com/ and create a free account
+// 2. Click "Create API Key"
+// 3. Paste the key here. It provides ultra-fast direct image hosting avoiding Google Drive bottlenecks!
+export const IMGBB_API_KEY = 'PASTE_YOUR_API_KEY_HERE';
+// ==========================================
+
 export const apiCall = async (action, data = {}, onProgress = null) => {
     if (SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
         console.warn('API URL not configured. Using fallback mocked response for action:', action);
@@ -23,6 +31,34 @@ export const apiCall = async (action, data = {}, onProgress = null) => {
             response = await fetch(url.toString(), {
                 method: 'GET'
             });
+        } else if (action === 'uploadPhoto' && IMGBB_API_KEY && IMGBB_API_KEY !== 'PASTE_YOUR_API_KEY_HERE') {
+            // Dedicated lightning-fast image upload bypassing Google Drive bottlenecks!
+            const formData = new FormData();
+            const pureBase64 = data.fileBase64.split(',')[1];
+            formData.append("image", pureBase64);
+
+            let intId = null;
+            if (onProgress) {
+                let p = 0;
+                intId = setInterval(() => {
+                    p += (100 - p) * 0.15;
+                    if (p > 95) p = 95;
+                    onProgress(Math.floor(p));
+                }, 100);
+            }
+
+            response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (intId) clearInterval(intId);
+            const result = await response.json();
+            if (onProgress) onProgress(100);
+            if (!result.success) throw new Error('ImgBB Upload Failed');
+
+            return { success: true, url: result.data.url };
+
         } else {
             // Use POST for backend doPost
             const payload = { action, ...data };
