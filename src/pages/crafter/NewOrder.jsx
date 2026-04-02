@@ -500,14 +500,23 @@ export default function NewOrder() {
                 )}
 
                 {pendingUploads && (
-                    <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center backdrop-blur-sm px-4">
-                        <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col max-w-sm w-full border-t-8 border-blue-600 text-center">
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Upload Photos?</h3>
-                            <p className="text-gray-600 mb-6 font-medium">Are you sure you want to securely begin uploading these {Array.from(pendingUploads.newFiles).length} photos in the background?</p>
+                    <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center backdrop-blur-sm px-4 overflow-y-auto pt-10 pb-10">
+                        <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col max-w-sm w-full border-t-8 border-blue-600">
+                            <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">Confirm Photos</h3>
+                            <p className="text-gray-600 mb-4 text-center text-sm font-medium">Please verify the {Array.from(pendingUploads.newFiles).length} photo(s) selected before continuing.</p>
+
+                            <div className="grid grid-cols-3 gap-2 mb-6 max-h-[30vh] overflow-y-auto p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                {Array.from(pendingUploads.newFiles).map((f, i) => (
+                                    <div key={i} className="aspect-square rounded shadow-sm overflow-hidden border border-gray-200">
+                                        <img src={URL.createObjectURL(f)} alt="preview" className="object-cover w-full h-full" />
+                                    </div>
+                                ))}
+                            </div>
+
                             <div className="flex space-x-3 w-full">
                                 <button type="button" onClick={() => setPendingUploads(null)} className="flex-1 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 font-bold transition-colors">Cancel</button>
                                 <button type="button" onClick={confirmPendingUploads} className="flex-1 flex justify-center items-center py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition-colors">
-                                    Yes, Upload
+                                    Confirm
                                 </button>
                             </div>
                         </div>
