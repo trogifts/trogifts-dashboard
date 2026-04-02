@@ -10,6 +10,7 @@ export default function Orders() {
     const [actionLoading, setActionLoading] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null); // { id, newStatus }
     const [rejectReason, setRejectReason] = useState('Color scheme is incorrect');
+    const [rejectionSuccess, setRejectionSuccess] = useState(false);
     const [replacementFiles, setReplacementFiles] = useState([]);
     const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -39,6 +40,7 @@ export default function Orders() {
     const triggerAction = (orderId, status) => {
         setConfirmAction({ id: orderId, newStatus: status });
         setRejectReason('I want to change the img');
+        setRejectionSuccess(false);
     };
 
     const confirmAndExecute = async () => {
@@ -52,14 +54,14 @@ export default function Orders() {
             if (res.success) {
                 setOrders(orders.map(o => o.id === id ? { ...o, status: finalStatus } : o));
                 if (newStatus === 'Changes Requested') {
-                    setTimeout(() => alert("The TroGifts team will contact you soon regarding this issue."), 100);
+                    setRejectionSuccess(true);
                 }
             }
         } catch (err) {
             console.error("Failed to update status", err);
         } finally {
             setActionLoading(null);
-            setConfirmAction(null);
+            if (newStatus !== 'Changes Requested') setConfirmAction(null);
         }
     };
 
@@ -145,32 +147,42 @@ export default function Orders() {
             {confirmAction && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm px-4">
                     <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col max-w-sm w-full border-t-4 border-blue-600">
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Are you sure?</h3>
-                        <p className="text-gray-600 mb-4 flex-wrap">
-                            You are about to <strong className={`font-bold uppercase ${confirmAction.newStatus === 'Approved' ? 'text-green-600' : 'text-red-600'}`}>{confirmAction.newStatus === 'Approved' ? 'APPROVE' : 'REJECT'}</strong> the final design.
-                            {confirmAction.newStatus === 'Approved' ? ' This signifies the design is absolutely finalized.' : ' Please select the reason for rejection below.'}
-                        </p>
-
-                        {confirmAction.newStatus === 'Changes Requested' && (
-                            <div className="mb-6 space-y-4 pt-4 border-t border-gray-100">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Reason for Changes</label>
-                                    <select value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 py-2 bg-gray-50">
-                                        <option>I want to change the img</option>
-                                        <option>I want to change the name</option>
-                                        <option>I don't need this I want to cancel this</option>
-                                        <option>Other</option>
-                                    </select>
-                                </div>
+                        {rejectionSuccess ? (
+                            <div className="text-center py-4">
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">Issue Logged</h3>
+                                <p className="text-gray-600 mb-6 font-medium">The TroGifts team will contact you soon regarding this issue.</p>
+                                <button onClick={() => { setRejectionSuccess(false); setConfirmAction(null); }} className="w-full py-2 flex justify-center text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition-colors">Okay</button>
                             </div>
-                        )}
+                        ) : (
+                            <>
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">Are you sure?</h3>
+                                <p className="text-gray-600 mb-4 flex-wrap">
+                                    You are about to <strong className={`font-bold uppercase ${confirmAction.newStatus === 'Approved' ? 'text-green-600' : 'text-red-600'}`}>{confirmAction.newStatus === 'Approved' ? 'APPROVE' : 'REJECT'}</strong> the final design.
+                                    {confirmAction.newStatus === 'Approved' ? ' This signifies the design is absolutely finalized.' : ' Please select the reason for rejection below.'}
+                                </p>
 
-                        <div className="flex space-x-3 w-full">
-                            <button onClick={() => setConfirmAction(null)} className="flex-1 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 font-bold transition-colors">Cancel</button>
-                            <button onClick={confirmAndExecute} disabled={!!actionLoading} className={`flex-1 flex justify-center items-center py-2 text-white rounded-lg font-bold transition-colors ${actionLoading ? 'opacity-50' : ''} ${confirmAction.newStatus === 'Approved' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
-                                {actionLoading ? (uploadProgress > 0 ? `Uploading (${uploadProgress}%)` : 'Saving...') : 'Confirm'}
-                            </button>
-                        </div>
+                                {confirmAction.newStatus === 'Changes Requested' && (
+                                    <div className="mb-6 space-y-4 pt-4 border-t border-gray-100">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Reason for Changes</label>
+                                            <select value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 py-2 bg-gray-50">
+                                                <option>I want to change the img</option>
+                                                <option>I want to change the name</option>
+                                                <option>I don't need this I want to cancel this</option>
+                                                <option>Other</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex space-x-3 w-full">
+                                    <button onClick={() => setConfirmAction(null)} className="flex-1 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 font-bold transition-colors">Cancel</button>
+                                    <button onClick={confirmAndExecute} disabled={!!actionLoading} className={`flex-1 flex justify-center items-center py-2 text-white rounded-lg font-bold transition-colors ${actionLoading ? 'opacity-50' : ''} ${confirmAction.newStatus === 'Approved' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
+                                        {actionLoading ? (uploadProgress > 0 ? `Uploading (${uploadProgress}%)` : 'Saving...') : 'Confirm'}
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
