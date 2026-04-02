@@ -152,12 +152,22 @@ function handleCreateOrder(data, headers) {
 }
 function handleGetOrders(params, headers) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Orders');
+  const userSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
   if (!sheet) return errorResponse('Orders sheet not found', headers);
+  
+  // Build lookup map for crafter phones
+  const phoneMap = {};
+  if (userSheet) {
+    const uRows = userSheet.getDataRange().getValues();
+    for (let u = 1; u < uRows.length; u++) {
+      phoneMap[uRows[u][6]] = uRows[u][4]; // Referral_ID -> Phone
+    }
+  }
   
   const rows = sheet.getDataRange().getValues();
   const orders = [];
   
-  for (let i = 0; i < rows.length; i++) {
+  for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     const order = {
       id: row[0],
@@ -174,7 +184,8 @@ function handleGetOrders(params, headers) {
       quantity: row[11],
       price: row[12],
       commission: row[13],
-      paymentUrl: row[14]
+      paymentUrl: row[14],
+      crafterPhone: phoneMap[row[1]] || ''
     };
     
     // If getting for specific crafter, filter

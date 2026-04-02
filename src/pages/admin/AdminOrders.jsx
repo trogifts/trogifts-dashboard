@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, UploadCloud, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Filter, UploadCloud, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
 import { apiCall } from '../../api';
 
 export default function AdminOrders() {
@@ -177,10 +177,16 @@ export default function AdminOrders() {
                                         <select
                                             value={order.status}
                                             onChange={(e) => updateStatus(order.id, e.target.value)}
-                                            className="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                            className={`text-sm border-gray-300 rounded-md focus:ring-blue-500 py-1.5 focus:border-blue-500 ${order.status === 'Waiting for Approval' ? 'bg-orange-50 text-orange-800 border-orange-200 font-bold' : order.status === 'Approved' ? 'bg-green-50 text-green-800 border-green-200 font-bold' : ''}`}
                                         >
                                             {statuses.slice(1).map(s => <option key={s} value={s}>{s}</option>)}
                                         </select>
+
+                                        {order.crafterPhone && (
+                                            <a href={`https://wa.me/${order.crafterPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hello, regards to TroGifts Order: ' + order.id)}`} target="_blank" rel="noreferrer" className="mt-2 flex items-center text-xs text-green-600 hover:text-green-800 font-bold transition-colors">
+                                                <MessageCircle size={14} className="mr-1" /> WhatsApp Crafter
+                                            </a>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center space-y-2">
                                         {order.photoUrl && order.photoUrl !== 'No Photo' ? (
@@ -193,16 +199,16 @@ export default function AdminOrders() {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         {uploadingOrder === order.id ? (
-                                            <span className="text-gray-500 mx-2 flex items-center justify-end w-full space-x-1 animate-pulse font-bold">
+                                            <span className="text-gray-500 mx-2 flex items-center justify-end w-full space-x-1 animate-pulse font-bold bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
                                                 <span>Uploading...</span>
                                             </span>
                                         ) : order.designUrl ? (
-                                            <a href={order.designUrl} target="_blank" rel="noreferrer" className="text-green-600 hover:text-green-800 mx-2 flex items-center justify-end w-full space-x-1 font-bold">
+                                            <a href={order.designUrl} target="_blank" rel="noreferrer" className="text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 px-3 py-1.5 rounded-lg mx-2 flex items-center justify-end w-full space-x-1 font-bold transition-colors">
                                                 <CheckCircle size={16} />
                                                 <span>Design Ready</span>
                                             </a>
                                         ) : (
-                                            <label className="text-blue-600 hover:text-blue-900 mx-2 flex items-center justify-end w-full space-x-1 cursor-pointer font-bold">
+                                            <label className="text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-3 py-1.5 rounded-lg mx-2 flex items-center justify-end w-full space-x-1 cursor-pointer font-bold transition-colors">
                                                 <UploadCloud size={16} />
                                                 <span>Upload Design</span>
                                                 <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => handleDesignUpload(e, order.id)} />

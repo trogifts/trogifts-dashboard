@@ -154,21 +154,12 @@ export default function Orders() {
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">Reason for Changes</label>
                                     <select value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 py-2 bg-gray-50">
-                                        <option>Color scheme is incorrect</option>
-                                        <option>Spelling or Detail Error</option>
-                                        <option>Not what I envisioned</option>
-                                        <option>I want to change the raw images</option>
+                                        <option>I want to change the img</option>
+                                        <option>I want to change the name</option>
+                                        <option>I don't need this I want to cancel this</option>
+                                        <option>Other</option>
                                     </select>
                                 </div>
-
-                                {rejectReason === 'I want to change the raw images' && (
-                                    <div className="bg-orange-50 p-3 rounded border border-orange-200">
-                                        <label className="block text-xs font-bold text-orange-800 mb-2">Select Replacement Images</label>
-                                        <p className="text-xs text-orange-600 mb-3">This will permanently overwrite the previous photos attached to this order.</p>
-                                        <input type="file" multiple accept="image/*" onChange={(e) => setReplacementFiles(Array.from(e.target.files))} className="block w-full text-xs file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-orange-600 file:text-white hover:file:bg-orange-700 cursor-pointer" />
-                                        {replacementFiles.length > 0 && <span className="text-xs font-bold text-orange-700 block mt-2">{replacementFiles.length} replacement files selected</span>}
-                                    </div>
-                                )}
                             </div>
                         )}
 

@@ -24,6 +24,7 @@ export default function NewOrder() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [progress, setProgress] = useState(0);
     const [success, setSuccess] = useState(false);
+    const [pendingUploads, setPendingUploads] = useState(null);
     const [upiId, setUpiId] = useState('yourupi@bank');
 
     useEffect(() => {
@@ -80,7 +81,12 @@ export default function NewOrder() {
     };
 
     const addFilesToItem = (index, newFiles) => {
-        if (!window.confirm(`Are you sure you want to safely begin uploading these ${newFiles.length} photos?`)) return;
+        setPendingUploads({ index, newFiles });
+    };
+
+    const confirmPendingUploads = () => {
+        if (!pendingUploads) return;
+        const { index, newFiles } = pendingUploads;
 
         const newItems = [...items];
         const newObjs = Array.from(newFiles).map(f => ({ file: f, url: null, status: 'uploading' }));
@@ -107,6 +113,8 @@ export default function NewOrder() {
                 });
             }
         });
+
+        setPendingUploads(null);
     };
 
     const removeFileFromItem = (itemIndex, fileIndex) => {
@@ -486,6 +494,21 @@ export default function NewOrder() {
                                 <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
                                     <div className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {pendingUploads && (
+                    <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center backdrop-blur-sm px-4">
+                        <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col max-w-sm w-full border-t-8 border-blue-600 text-center">
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Upload Photos?</h3>
+                            <p className="text-gray-600 mb-6 font-medium">Are you sure you want to securely begin uploading these {Array.from(pendingUploads.newFiles).length} photos in the background?</p>
+                            <div className="flex space-x-3 w-full">
+                                <button type="button" onClick={() => setPendingUploads(null)} className="flex-1 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 font-bold transition-colors">Cancel</button>
+                                <button type="button" onClick={confirmPendingUploads} className="flex-1 flex justify-center items-center py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition-colors">
+                                    Yes, Upload
+                                </button>
                             </div>
                         </div>
                     </div>
