@@ -461,9 +461,15 @@ export default function NewOrder() {
                                                     <img src={URL.createObjectURL(fObj.file)} alt="preview" className="object-cover w-full h-full" />
 
                                                     {/* Background Status Indicator */}
+                                                    {fObj.status === 'queued' && (
+                                                        <div className="absolute inset-0 bg-gray-500/50 flex items-center justify-center pointer-events-none z-10 transition-all">
+                                                            <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-gray-900/60 px-2 py-0.5 rounded-full shadow border border-gray-500/30">In Queue</span>
+                                                        </div>
+                                                    )}
                                                     {fObj.status === 'uploading' && (
-                                                        <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-                                                            <Loader2 size={16} className="text-blue-600 animate-spin" />
+                                                        <div className="absolute inset-0 bg-white/60 flex flex-col items-center justify-center pointer-events-none z-10">
+                                                            <Loader2 size={16} className="text-blue-600 animate-spin mb-1" />
+                                                            <span className="text-[10px] font-bold text-blue-700 uppercase tracking-widest leading-none drop-shadow-sm">Sending</span>
                                                         </div>
                                                     )}
                                                     {fObj.status === 'completed' && (
