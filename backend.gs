@@ -19,6 +19,8 @@ function doPost(e) {
       return handleCreateOrder(data, headers);
     } else if (action === 'updateOrderStatus') {
       return ContentService.createTextOutput(JSON.stringify(handleUpdateOrderStatus(data))).setMimeType(ContentService.MimeType.JSON);
+    } else if (action === 'uploadDesign') {
+      return handleUploadDesign(data, headers);
     } else if (action === 'submitPayout') {
       return ContentService.createTextOutput(JSON.stringify(handleSubmitPayout(data))).setMimeType(ContentService.MimeType.JSON);
     } else if (action === 'updateCrafterStatus') {
@@ -217,6 +219,28 @@ function handleUpdateOrderStatus(data) {
   return { success: false, error: 'Order not found' };
 }
 
+function handleUploadDesign(data, headers) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Orders');
+    if (!sheet) return errorResponse('Orders sheet not found', headers);
+    
+    // Upload file
+    const url = uploadFileToDrive(data.fileBase64, data.fileName, data.mimeType, 'TroGifts_CompletedDesigns');
+    
+    // Find order and update Col 8 (Index 8, Column I)
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+        if (rows[i][0] === data.orderId) {
+            sheet.getRange(i + 1, 9).setValue(url);
+            return successResponse({ success: true, url: url, orderId: data.orderId }, headers);
+        }
+    }
+    return errorResponse('Order not found', headers);
+  } catch (error) {
+    return errorResponse(error.message, headers);
+  }
+}
+
 function handleSubmitPayout(data) {
   let payoutSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Payouts');
   if (!payoutSheet) {
@@ -328,9 +352,8 @@ function handleGetCrafters(headers) {
 
 // ----------------- Helpers -----------------
 
-function uploadFileToDrive(base64Data, filename, mimeType) {
-  // Get or Create generic 'TroGifts_IncomingPhoto' folder
-  const folderName = "TroGifts_IncomingPhoto";
+function uploadFileToDrive(base64Data, filename, mimeType, folderName = "TroGifts_IncomingPhoto") {
+  // Get or Create folder
   let folders = DriveApp.getFoldersByName(folderName);
   let folder;
   if (folders.hasNext()) {

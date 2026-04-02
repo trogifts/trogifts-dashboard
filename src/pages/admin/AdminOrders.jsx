@@ -8,6 +8,7 @@ export default function AdminOrders() {
     const [statusFilter, setStatusFilter] = useState('All');
     const [inspectOrder, setInspectOrder] = useState(null);
     const [toastMessage, setToastMessage] = useState(null);
+    const [uploadingOrder, setUploadingOrder] = useState(null);
 
     const statuses = ['All', 'Order Placed', 'Payment Verify', 'Waiting for Approval', 'Printed', 'Shipped', 'Delivered'];
 
@@ -41,6 +42,45 @@ export default function AdminOrders() {
             console.error("Failed to update status", err);
             setToastMessage(`Failed to update ${id}! Check network.`);
             setTimeout(() => setToastMessage(null), 4000);
+        }
+    };
+
+    const fileToBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+
+    const handleDesignUpload = async (e, orderId) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploadingOrder(orderId);
+        try {
+            const base64 = await fileToBase64(file);
+            const res = await apiCall('uploadDesign', {
+                orderId: orderId,
+                fileName: file.name,
+                mimeType: file.type,
+                fileBase64: base64
+            });
+
+            if (res.success) {
+                setToastMessage(`Design successfully securely attached to ${orderId}`);
+                setTimeout(() => setToastMessage(null), 4000);
+                setOrders(orders.map(o => o.id === orderId ? { ...o, designUrl: res.url } : o));
+            } else {
+                throw new Error(res.error || "API reported failure");
+            }
+        } catch (err) {
+            console.error(err);
+            setToastMessage(`Failed to upload design for ${orderId}`);
+            setTimeout(() => setToastMessage(null), 4000);
+        } finally {
+            // Reset input so they can re-upload if needed
+            e.target.value = null;
+            setUploadingOrder(null);
         }
     };
 
@@ -146,10 +186,22 @@ export default function AdminOrders() {
                                         ) : (<span className="text-gray-400 text-xs block">No Payment</span>)}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button className="text-blue-600 hover:text-blue-900 mx-2 flex items-center justify-end w-full space-x-1">
-                                            <UploadCloud size={16} />
-                                            <span>Upload Design</span>
-                                        </button>
+                                        {uploadingOrder === order.id ? (
+                                            <span className="text-gray-500 mx-2 flex items-center justify-end w-full space-x-1 animate-pulse font-bold">
+                                                <span>Uploading...</span>
+                                            </span>
+                                        ) : order.designUrl ? (
+                                            <a href={order.designUrl} target="_blank" rel="noreferrer" className="text-green-600 hover:text-green-800 mx-2 flex items-center justify-end w-full space-x-1 font-bold">
+                                                <CheckCircle size={16} />
+                                                <span>Design Ready</span>
+                                            </a>
+                                        ) : (
+                                            <label className="text-blue-600 hover:text-blue-900 mx-2 flex items-center justify-end w-full space-x-1 cursor-pointer font-bold">
+                                                <UploadCloud size={16} />
+                                                <span>Upload Design</span>
+                                                <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => handleDesignUpload(e, order.id)} />
+                                            </label>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
