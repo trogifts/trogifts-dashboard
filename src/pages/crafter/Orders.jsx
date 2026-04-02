@@ -7,6 +7,7 @@ export default function Orders() {
     const { user } = useAuth();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(null);
 
     useEffect(() => {
         async function fetchOrders() {
@@ -21,6 +22,20 @@ export default function Orders() {
         }
         fetchOrders();
     }, [user]);
+
+    const handleAction = async (orderId, status) => {
+        setActionLoading(orderId);
+        try {
+            const res = await apiCall('updateOrderStatus', { orderId, status });
+            if (res.success) {
+                setOrders(orders.map(o => o.id === orderId ? { ...o, status } : o));
+            }
+        } catch (err) {
+            console.error("Failed to update status", err);
+        } finally {
+            setActionLoading(null);
+        }
+    };
 
     const StatusBadge = ({ status }) => {
         const styles = {
@@ -67,13 +82,30 @@ export default function Orders() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{order.id}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.customerName}</td>
                                         <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={order.status} /></td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm flex space-x-2">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm flex space-x-2 items-center">
                                             {order.designUrl ? (
-                                                <a href={order.designUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-900 flex items-center">
+                                                <a href={order.designUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-900 flex items-center font-bold">
                                                     <ExternalLink size={16} className="mr-1" /> View Design
                                                 </a>
                                             ) : (
                                                 <span className="text-gray-400 italic">Not ready</span>
+                                            )}
+
+                                            {order.designUrl && order.status === 'Waiting for Approval' && (
+                                                <div className="ml-4 flex items-center space-x-2 border-l border-gray-200 pl-4">
+                                                    {actionLoading === order.id ? (
+                                                        <span className="text-xs text-gray-500 animate-pulse font-bold">Updating...</span>
+                                                    ) : (
+                                                        <>
+                                                            <button onClick={() => handleAction(order.id, 'Approved')} className="text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded shadow-sm text-xs font-bold transition-colors">
+                                                                Approve
+                                                            </button>
+                                                            <button onClick={() => handleAction(order.id, 'Changes Requested')} className="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded shadow-sm text-xs font-bold transition-colors">
+                                                                Reject
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             )}
                                         </td>
                                     </tr>

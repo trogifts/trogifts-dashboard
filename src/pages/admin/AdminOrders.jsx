@@ -10,7 +10,7 @@ export default function AdminOrders() {
     const [toastMessage, setToastMessage] = useState(null);
     const [uploadingOrder, setUploadingOrder] = useState(null);
 
-    const statuses = ['All', 'Order Placed', 'Payment Verify', 'Waiting for Approval', 'Printed', 'Shipped', 'Delivered'];
+    const statuses = ['All', 'Order Placed', 'Payment Verify', 'Waiting for Approval', 'Changes Requested', 'Approved', 'Printed', 'Shipped', 'Delivered'];
 
     useEffect(() => {
         fetchOrders();
