@@ -22,6 +22,7 @@ export default function NewOrder() {
 
     const [paymentFile, setPaymentFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [progress, setProgress] = useState(0);
     const [submitError, setSubmitError] = useState(null);
     const [uploadStatusMsg, setUploadStatusMsg] = useState('Verifying active uploads...');
     const [success, setSuccess] = useState(false);
