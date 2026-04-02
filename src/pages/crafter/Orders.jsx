@@ -38,9 +38,7 @@ export default function Orders() {
 
     const triggerAction = (orderId, status) => {
         setConfirmAction({ id: orderId, newStatus: status });
-        setRejectReason('Color scheme is incorrect'); // Reset default
-        setReplacementFiles([]);
-        setUploadProgress(0);
+        setRejectReason('I want to change the img');
     };
 
     const confirmAndExecute = async () => {
@@ -49,9 +47,13 @@ export default function Orders() {
 
         setActionLoading(id);
         try {
-            const res = await apiCall('updateOrderStatus', { orderId: id, status: newStatus });
+            const finalStatus = newStatus === 'Changes Requested' ? `Changes Requested - ${rejectReason}` : newStatus;
+            const res = await apiCall('updateOrderStatus', { orderId: id, status: finalStatus });
             if (res.success) {
-                setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
+                setOrders(orders.map(o => o.id === id ? { ...o, status: finalStatus } : o));
+                if (newStatus === 'Changes Requested') {
+                    setTimeout(() => alert("The TroGifts team will contact you soon regarding this issue."), 100);
+                }
             }
         } catch (err) {
             console.error("Failed to update status", err);

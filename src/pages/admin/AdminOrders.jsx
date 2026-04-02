@@ -183,7 +183,7 @@ export default function AdminOrders() {
                                         </select>
 
                                         {order.crafterPhone && (
-                                            <a href={`https://wa.me/${String(order.crafterPhone).replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hello, regards to TroGifts Order: ' + order.id)}`} target="_blank" rel="noreferrer" className="mt-2 flex items-center text-xs text-green-600 hover:text-green-800 font-bold transition-colors">
+                                            <a href={`https://wa.me/${String(order.crafterPhone).replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hello, regarding TroGifts Order ' + order.id + '. Current Status: ' + order.status)}`} target="_blank" rel="noreferrer" className="mt-2 flex items-center text-xs text-green-600 hover:text-green-800 font-bold transition-colors">
                                                 <MessageCircle size={14} className="mr-1" /> WhatsApp Crafter
                                             </a>
                                         )}
