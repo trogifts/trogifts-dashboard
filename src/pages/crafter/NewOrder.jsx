@@ -175,7 +175,8 @@ export default function NewOrder() {
         setItems(newItems);
         setPendingUploads(null);
 
-        for (const fObj of newObjs) {
+        // Use Promise.all for extremely fast true parallel uploads (safely compressed)
+        const uploadPromises = newObjs.map(async (fObj) => {
             setItems(prev => {
                 const copy = [...prev];
                 if (!copy[index]) return copy;
@@ -185,7 +186,6 @@ export default function NewOrder() {
             });
 
             try {
-                // Pre-process (compress) the file before uploading
                 const b64 = await processImageFile(fObj.file);
                 const res = await apiCall('uploadPhoto', { fileBase64: b64, fileName: fObj.file.name, mimeType: fObj.file.type }, (percent) => {
                     setItems(prev => {
@@ -216,7 +216,9 @@ export default function NewOrder() {
                     return copy;
                 });
             }
-        }
+        });
+
+        await Promise.all(uploadPromises);
     };
 
     const removeFileFromItem = (itemIndex, fileIndex) => {
