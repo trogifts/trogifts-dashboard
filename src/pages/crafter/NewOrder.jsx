@@ -229,11 +229,14 @@ export default function NewOrder() {
             setUploadStatusMsg('Pushing order to robust servers...');
 
             // Reconstruct final string formats for the backend payload
+            const currentItems = itemsRef.current;
+            const currentPay = paymentFileRef.current;
+
             let finalPhotoString = '';
-            for (let i = 0; i < items.length; i++) {
+            for (let i = 0; i < currentItems.length; i++) {
                 if (finalPhotoString.length > 0) finalPhotoString += '\n';
-                finalPhotoString += `--- Item ${i + 1}: ${items[i].customerName} ---\n`;
-                for (const fObj of items[i].files) {
+                finalPhotoString += `--- Item ${i + 1}: ${currentItems[i].customerName} ---\n`;
+                for (const fObj of currentItems[i].files) {
                     if (fObj.url) finalPhotoString += fObj.url + '\n';
                     else finalPhotoString += '[UPLOAD FAILED]\n';
                 }
@@ -244,9 +247,9 @@ export default function NewOrder() {
             const ObjectFinancials = financials();
 
             // Combine all names and templates
-            const allNames = items.map((i, index) => `Item ${index + 1}: ${i.customerName}`).join('\n');
-            const allTemplates = items.map((i, index) => `Item ${index + 1}: ${i.template}`).join('\n');
-            const allAddresses = items.map((i, index) => `Item ${index + 1}:\n${i.address}`).join('\n\n--- \n');
+            const allNames = currentItems.map((i, index) => `Item ${index + 1}: ${i.customerName}`).join('\n');
+            const allTemplates = currentItems.map((i, index) => `Item ${index + 1}: ${i.template}`).join('\n');
+            const allAddresses = currentItems.map((i, index) => `Item ${index + 1}:\n${i.address}`).join('\n\n--- \n');
 
             const isMultipleAddresses = formData.deliveryMethod === 'Deliver to Customer' && !formData.sameAddress;
 
@@ -257,7 +260,7 @@ export default function NewOrder() {
                 address: isMultipleAddresses ? allAddresses : formData.address,
                 referralId: user.referral_id,
                 finalPhotoString: finalPhotoString,
-                paymentUrl: paymentFile.url,
+                paymentUrl: currentPay ? currentPay.url : '',
                 price: ObjectFinancials.price,
                 originalPrice: ObjectFinancials.originalPrice,
                 commission: ObjectFinancials.commission
