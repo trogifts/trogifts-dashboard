@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { UploadCloud, CheckCircle, Loader2, X, Truck, Package } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiCall } from '../../api';
@@ -27,6 +27,17 @@ export default function NewOrder() {
     const [success, setSuccess] = useState(false);
     const [pendingUploads, setPendingUploads] = useState(null);
     const [upiId, setUpiId] = useState('yourupi@bank');
+
+    const itemsRef = useRef(items);
+    const paymentFileRef = useRef(paymentFile);
+
+    useEffect(() => {
+        itemsRef.current = items;
+    }, [items]);
+
+    useEffect(() => {
+        paymentFileRef.current = paymentFile;
+    }, [paymentFile]);
 
     useEffect(() => {
         fetch('/upi.txt')
@@ -186,25 +197,19 @@ export default function NewOrder() {
                     let total = 0;
                     let completed = 0;
 
-                    // Check payment
-                    setPaymentFile(currentPay => {
-                        if (currentPay) {
-                            total++;
-                            if (currentPay.status === 'completed' || currentPay.status === 'error') completed++;
-                        }
-                        return currentPay;
-                    });
+                    const currentPay = paymentFileRef.current;
+                    if (currentPay) {
+                        total++;
+                        if (currentPay.status === 'completed' || currentPay.status === 'error') completed++;
+                    }
 
-                    // Check items
-                    setItems(currentItems => {
-                        for (let i = 0; i < currentItems.length; i++) {
-                            for (let f of currentItems[i].files) {
-                                total++;
-                                if (f.status === 'completed' || f.status === 'error') completed++;
-                            }
+                    const currentItems = itemsRef.current;
+                    for (let i = 0; i < currentItems.length; i++) {
+                        for (let f of currentItems[i].files) {
+                            total++;
+                            if (f.status === 'completed' || f.status === 'error') completed++;
                         }
-                        return currentItems;
-                    });
+                    }
 
                     if (total > 0 && total === completed) {
                         clearInterval(check);
