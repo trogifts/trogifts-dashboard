@@ -23,6 +23,8 @@ function doPost(e) {
       return handleUploadDesign(data, headers);
     } else if (action === 'uploadPhoto') {
       return handleUploadPhoto(data, headers);
+    } else if (action === 'imageKitAuth') {
+      return handleImageKitAuth(headers);
     } else if (action === 'updateOrderPhotos') {
       return handleUpdateOrderPhotos(data, headers);
     } else if (action === 'submitPayout') {
@@ -233,6 +235,26 @@ function handleUploadDesign(data, headers) {
   } catch (error) {
     return errorResponse(error.message, headers);
   }
+}
+
+// ImageKit Integration Auth Generator
+function handleImageKitAuth(headers) {
+  var privateKey = "private_iObSFKYv8L8AYuSmyelfvJW/yMM=";
+  var token = Utilities.getUuid();
+  var expire = Math.floor(Date.now() / 1000) + 60 * 30; // 30 mins
+  
+  var signatureBytes = Utilities.computeHmacSignature(Utilities.MacAlgorithm.HMAC_SHA_1, token + expire, privateKey);
+  
+  var signature = signatureBytes.map(function(byte) {
+    var v = (byte < 0 ? 256 + byte : byte).toString(16);
+    return v.length == 1 ? '0' + v : v;
+  }).join('');
+  
+  return successResponse({
+    token: token,
+    expire: expire,
+    signature: signature
+  }, headers);
 }
 
 function handleUploadPhoto(data, headers) {

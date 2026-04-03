@@ -84,6 +84,44 @@ export default function NewOrder() {
         setItems(newItems);
     };
 
+    const uploadToImageKit = (fileObjOrBase64, onProgress) => {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const authRes = await apiCall('imageKitAuth');
+                const formData = new FormData();
+
+                // ImageKit natively processes binary files or raw Base64 seamlessly
+                const isBase64 = typeof fileObjOrBase64 === 'string';
+                const fileData = isBase64 ? fileObjOrBase64 : fileObjOrBase64;
+                const fileName = isBase64 ? 'PAY_RECEIPT_' + Date.now() + '.jpg' : fileObjOrBase64.name;
+
+                formData.append('file', fileData);
+                formData.append('publicKey', "public_dDc0Ef5AdC441yPX2BS8xhXDPcY=");
+                formData.append('signature', authRes.signature);
+                formData.append('expire', authRes.expire);
+                formData.append('token', authRes.token);
+                formData.append('fileName', fileName);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', 'https://upload.imagekit.io/api/v1/files/upload', true);
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        resolve({ success: true, url: response.url + '?tr=w-800,q-auto,f-auto' });
+                    } else reject(new Error(xhr.responseText));
+                };
+
+                xhr.onerror = () => reject(new Error("Network Error"));
+                xhr.send(formData);
+            } catch (e) { reject(e); }
+        });
+    };
+
     const compressPaymentScreenshot = (file) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -175,7 +213,7 @@ export default function NewOrder() {
         setItems(newItems);
         setPendingUploads(null);
 
-        // Use Promise.all for extremely fast true parallel uploads (safely compressed)
+        // Securely pass RAW 50MB binary files without memory-crashing DOM compressions by directly offloading to ImageKit
         const uploadPromises = newObjs.map(async (fObj) => {
             setItems(prev => {
                 const copy = [...prev];
@@ -186,8 +224,7 @@ export default function NewOrder() {
             });
 
             try {
-                const b64 = await processImageFile(fObj.file);
-                const res = await apiCall('uploadPhoto', { fileBase64: b64, fileName: fObj.file.name, mimeType: fObj.file.type }, (percent) => {
+                const res = await uploadToImageKit(fObj.file, (percent) => {
                     setItems(prev => {
                         const copy = [...prev];
                         if (!copy[index]) return copy;
@@ -231,10 +268,11 @@ export default function NewOrder() {
         const file = e.target.files[0];
         if (!file) return;
         setPaymentFile({ file: file, status: 'uploading', uploadProgress: 0, url: null });
+
+        // We still aggressively compress the Payment Screenshot since pristine clarity is irrelevant for receipts
         compressPaymentScreenshot(file).then(async (b64) => {
             try {
-                // Apply the new XHR wrapper for tracking upload progress
-                const res = await apiCall('uploadPhoto', { fileBase64: b64, fileName: 'PAY_' + file.name, mimeType: 'image/jpeg' }, (percent) => {
+                const res = await uploadToImageKit(b64, (percent) => {
                     setPaymentFile(prev => ({ ...prev, uploadProgress: percent }));
                 });
                 if (res.success) setPaymentFile(prev => ({ ...prev, url: res.url, status: 'completed' }));

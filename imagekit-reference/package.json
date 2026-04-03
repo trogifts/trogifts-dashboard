@@ -1,0 +1,18 @@
+{
+  "name": "imagekit-reference",
+  "version": "1.0.0",
+  "description": "You asked for a full working code system fulfilling 8 unique rules (No Compression, 5MB-50MB exactly, XHR Progress, Auth Hooks, Dynamic Transformation `?tr=w-800,q-auto,f-autoThe`, and Backend File Deletion).",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "imagekit": "^6.0.0"
+  }
+}

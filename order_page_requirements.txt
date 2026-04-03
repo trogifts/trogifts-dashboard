@@ -1,0 +1,52 @@
+TROGIFTS DASHBOARD: NEW ORDER PAGE REQUIREMENTS
+
+1. GENERAL FORM CAPABILITIES
+---------------------------------------------------------
+- The page must handle single orders as well as large batch orders.
+- Users input a "Quantity" (batch size), which dynamically generates the exact number of sub-forms (one for each specific item in the batch).
+- Each sub-form requires:
+  * Customer Name
+  * Customization Template Type
+  * Customer Photos (Images mapped precisely to that sub-form)
+  * Independent Shipping Address (if applicable)
+
+2. LOGISTICS & DELIVERY OPTIONS
+---------------------------------------------------------
+The form must present the Crafter with two distinct Delivery Methods:
+
+Option A: "Deliver to Crafter"
+- The entire batch of items is shipped directly back to the Crafter.
+- Individual shipping address boxes per customer are hidden.
+- The Crafter only inputs their own bulk receiving address once.
+
+Option B: "Deliver to Customer"
+- If selected, a toggle switch appears asking if they want to "Ship all items to one specific address".
+- If toggle is ON: Only one master shipping address box is shown.
+- If toggle is OFF: Every single customized item in the batch receives its own mandatory Shipping Address text box (enabling mass custom drop-shipping across different states natively).
+
+3. PRICING & AUTO-DISCOUNT ENGINE
+---------------------------------------------------------
+- Base Price: ₹249 per individual product.
+- Discount Rule: If the batch Quantity is 2 or more, apply a flat 5% discount across the total cumulative base price.
+- Dynamic UPI: The form must auto-generate a valid UPI QR Code perfectly matching the final discounted Price.
+
+4. PROFIT / COMMISSION CALCULATIONS (Crafter Earnings)
+---------------------------------------------------------
+The Crafter must explicitly see their guaranteed Profit/Commission dynamically update on the screen before they submit. The equations (EQ) are rigidly bound to logistics:
+
+Equation 1 (Standard Flat Rate):
+- Trigger: Delivery = "Deliver to Customer" AND items are shipped to different addresses.
+- Logic: Full commission is awarded for every single item since TroGifts covers independent logistics.
+- Equation: Commission = Quantity * ₹30
+
+Equation 2 (Bulk/Consolidated Shipping Bonus):
+- Trigger: Delivery = "Deliver to Crafter" OR "Deliver to Customer (all to same address)".
+- Logic: TroGifts saves heavily on bulk shipping costs. We pass these savings back to the Crafter by giving them the primary rate for the first item, and a slightly lower rate for subsequent items in the box.
+- Equation: Commission = ₹30 + ( (Quantity - 1) * ₹20 )
+- Example (Quantity 3): ₹30 + (2 * ₹20) = ₹70 Total Commission.
+
+5. SECURITY & UPLOAD BARRIERS
+---------------------------------------------------------
+- Payment screenshots are mandatory.
+- At least one image is mandatory per item.
+- Upload Pipeline must queue files dynamically, provide native progress bars mapped exactly to data chunks, and gracefully block/abort Form Submission if a server interruption corrupts a localized image midway.
