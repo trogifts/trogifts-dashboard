@@ -112,7 +112,7 @@ export default function NewOrder() {
                 xhr.onload = () => {
                     if (xhr.status === 200) {
                         const response = JSON.parse(xhr.responseText);
-                        resolve({ success: true, url: response.url + '?tr=w-800,q-auto,f-auto' });
+                        resolve({ success: true, url: response.url });
                     } else reject(new Error(xhr.responseText));
                 };
 
