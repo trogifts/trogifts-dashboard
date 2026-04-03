@@ -114,11 +114,11 @@ export default function AdminOrders() {
 
     const stats = {
         total: orders.length,
-        waiting: orders.filter(o => o.status === 'Waiting for Approval').length,
+        placed: orders.filter(o => o.status === 'Order Placed').length,
+        changesReq: orders.filter(o => o.status === 'Changes Required').length,
         approved: orders.filter(o => o.status === 'Approved').length,
-        printing: orders.filter(o => o.status === 'Printing').length,
-        dispatched: orders.filter(o => o.status === 'Dispatched').length,
-        rejected: orders.filter(o => o.status === 'Rejected').length,
+        delivered: orders.filter(o => o.status === 'Delivered').length,
+        waiting: orders.filter(o => o.status === 'Waiting for Approval').length,
     };
 
     return (
@@ -136,25 +136,25 @@ export default function AdminOrders() {
                     <span className="text-2xl font-bold text-gray-800">{stats.total}</span>
                     <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Total</span>
                 </div>
-                <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 flex flex-col items-center justify-center text-center">
+                <div className="bg-blue-50 p-3 rounded-xl border border-blue-200 flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl font-bold text-blue-600">{stats.placed}</span>
+                    <span className="text-[11px] text-blue-800 font-bold uppercase tracking-wider">Order Placed</span>
+                </div>
+                <div className="bg-red-50 p-3 rounded-xl border border-red-200 flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl font-bold text-red-600">{stats.changesReq}</span>
+                    <span className="text-[11px] text-red-800 font-bold uppercase tracking-wider">Changes Req</span>
+                </div>
+                <div className="bg-green-50 p-3 rounded-xl border border-green-200 flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl font-bold text-green-600">{stats.approved}</span>
+                    <span className="text-[11px] text-green-800 font-bold uppercase tracking-wider">Approved</span>
+                </div>
+                <div className="bg-purple-50 p-3 rounded-xl border border-purple-200 flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl font-bold text-purple-600">{stats.delivered}</span>
+                    <span className="text-[11px] text-purple-800 font-bold uppercase tracking-wider">Delivered</span>
+                </div>
+                <div className="bg-orange-50 p-3 rounded-xl border border-orange-200 flex flex-col items-center justify-center text-center">
                     <span className="text-2xl font-bold text-orange-600">{stats.waiting}</span>
-                    <span className="text-xs text-orange-800 font-bold uppercase tracking-wider">Waiting</span>
-                </div>
-                <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 flex flex-col items-center justify-center text-center">
-                    <span className="text-2xl font-bold text-blue-600">{stats.approved}</span>
-                    <span className="text-xs text-blue-800 font-bold uppercase tracking-wider">Approved</span>
-                </div>
-                <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 flex flex-col items-center justify-center text-center">
-                    <span className="text-2xl font-bold text-purple-600">{stats.printing}</span>
-                    <span className="text-xs text-purple-800 font-bold uppercase tracking-wider">Printing</span>
-                </div>
-                <div className="bg-green-50 p-3 rounded-xl border border-green-100 flex flex-col items-center justify-center text-center">
-                    <span className="text-2xl font-bold text-green-600">{stats.dispatched}</span>
-                    <span className="text-xs text-green-800 font-bold uppercase tracking-wider">Dispatched</span>
-                </div>
-                <div className="bg-red-50 p-3 rounded-xl border border-red-100 flex flex-col items-center justify-center text-center">
-                    <span className="text-2xl font-bold text-red-600">{stats.rejected}</span>
-                    <span className="text-xs text-red-800 font-bold uppercase tracking-wider">Rejected</span>
+                    <span className="text-[11px] text-orange-800 font-bold uppercase tracking-wider">Waiting</span>
                 </div>
             </div>
 
