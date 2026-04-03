@@ -251,15 +251,26 @@ export default function AdminOrders() {
                                 <div key={idx} className="space-y-3">
                                     <h3 className="font-bold text-gray-800 bg-gray-50 p-2 rounded-lg border border-gray-200">{group.title}</h3>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                        {group.urls.map((url, uidx) => (
-                                            <a key={uidx} href={url} target="_blank" rel="noreferrer" className="block text-center p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors">
-                                                <div className="text-blue-600 font-bold text-sm">
-                                                    {group.title !== 'General'
-                                                        ? `${group.title.split('(')[0].trim()} Photo ${uidx + 1}`
-                                                        : `Photo ${uidx + 1} (Unsorted)`}
+                                        {group.urls.map((url, uidx) => {
+                                            // Ensure we always grab the pure native URL stripping any preview queries if accidentally present
+                                            const rawUrl = url.split('?')[0];
+                                            const downloadUrl = `${rawUrl}?ik-attachment=true`;
+
+                                            return (
+                                                <div key={uidx} className="flex flex-col border border-gray-200 rounded-lg overflow-hidden hover:border-blue-500 transition-colors shadow-sm">
+                                                    <a href={rawUrl} target="_blank" rel="noreferrer" className="block text-center p-3 bg-white hover:bg-blue-50 border-b border-gray-100 flex-grow transition-colors">
+                                                        <div className="text-blue-600 font-bold text-sm">
+                                                            {group.title !== 'General'
+                                                                ? `${group.title.split('(')[0].trim()} Photo ${uidx + 1}`
+                                                                : `Photo ${uidx + 1} (Unsorted)`}
+                                                        </div>
+                                                    </a>
+                                                    <a href={downloadUrl} className="block text-center p-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold transition-colors">
+                                                        📥 Download RAW (Max Quality)
+                                                    </a>
                                                 </div>
-                                            </a>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             ))}
