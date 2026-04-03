@@ -112,12 +112,49 @@ export default function AdminOrders() {
         return groups;
     };
 
+    const stats = {
+        total: orders.length,
+        waiting: orders.filter(o => o.status === 'Waiting for Approval').length,
+        approved: orders.filter(o => o.status === 'Approved').length,
+        printing: orders.filter(o => o.status === 'Printing').length,
+        dispatched: orders.filter(o => o.status === 'Dispatched').length,
+        rejected: orders.filter(o => o.status === 'Rejected').length,
+    };
+
     return (
         <div className="space-y-6">
             <div className="sm:flex sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Manage Orders</h1>
                     <p className="mt-1 text-sm text-gray-500">View, update, and manage all crafter orders.</p>
+                </div>
+            </div>
+
+            {/* Status Statistics Ribbon */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                <div className="bg-white p-3 rounded-xl border border-gray-100 flex flex-col items-center justify-center text-center shadow-sm">
+                    <span className="text-2xl font-bold text-gray-800">{stats.total}</span>
+                    <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Total</span>
+                </div>
+                <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl font-bold text-orange-600">{stats.waiting}</span>
+                    <span className="text-xs text-orange-800 font-bold uppercase tracking-wider">Waiting</span>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl font-bold text-blue-600">{stats.approved}</span>
+                    <span className="text-xs text-blue-800 font-bold uppercase tracking-wider">Approved</span>
+                </div>
+                <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl font-bold text-purple-600">{stats.printing}</span>
+                    <span className="text-xs text-purple-800 font-bold uppercase tracking-wider">Printing</span>
+                </div>
+                <div className="bg-green-50 p-3 rounded-xl border border-green-100 flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl font-bold text-green-600">{stats.dispatched}</span>
+                    <span className="text-xs text-green-800 font-bold uppercase tracking-wider">Dispatched</span>
+                </div>
+                <div className="bg-red-50 p-3 rounded-xl border border-red-100 flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl font-bold text-red-600">{stats.rejected}</span>
+                    <span className="text-xs text-red-800 font-bold uppercase tracking-wider">Rejected</span>
                 </div>
             </div>
 

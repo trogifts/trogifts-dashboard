@@ -27,8 +27,8 @@ export default function AdminDashboard() {
 
     const statCards = [
         { label: 'Total Orders', value: stats.totalOrders, icon: Package, color: 'text-blue-600', bg: 'bg-blue-100' },
-        { label: 'Active Crafters', value: 'N/A', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-100' },
-        { label: 'Pending Approvals', value: 'N/A', icon: AlertCircle, color: 'text-orange-600', bg: 'bg-orange-100' },
+        { label: 'Active Crafters', value: stats.activeCrafters || 0, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-100' },
+        { label: 'Pending Approvals', value: stats.pendingApprovals || 0, icon: AlertCircle, color: 'text-orange-600', bg: 'bg-orange-100' },
         { label: 'Total Revenue', value: stats.totalEarnings, icon: HandCoins, color: 'text-green-600', bg: 'bg-green-100' },
     ];
 

@@ -316,11 +316,12 @@ function handleUpdateCrafterStatus(data, headers) {
 
 function handleGetDashboardStats(params, headers) {
   const orderSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Orders');
-  if(!orderSheet) return successResponse({totalOrders:0, totalEarnings:'₹0', pendingPayout:'₹0', paidEarnings:'₹0'}, headers);
+  if(!orderSheet) return successResponse({totalOrders:0, totalEarnings:'₹0', pendingPayout:'₹0', paidEarnings:'₹0', pendingApprovals:0, activeCrafters:0}, headers);
   
   let totalOrders = 0;
   let totalEarningsNum = 0;
   let deliveredEarningsNum = 0;
+  let pendingApprovals = 0;
 
   const rows = orderSheet.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
@@ -333,13 +334,26 @@ function handleGetDashboardStats(params, headers) {
         deliveredEarningsNum += comm;
       }
     } else if (!params.crafterId && rows[i][0] && rows[i][0].toString().startsWith('ORD')) {
-      // Global admin stats logic (if used elsewhere)
+      // Global admin stats logic
       totalOrders++;
-      const comm = parseFloat(rows[i][13]) || 0;
-      totalEarningsNum += comm;
-      if (rows[i][6] === 'Delivered') {
-        deliveredEarningsNum += comm;
+      totalEarningsNum += parseFloat(rows[i][12]) || 0; // Admin tracks Revenue
+      
+      if (rows[i][6] === 'Waiting for Approval') {
+        pendingApprovals++;
       }
+    }
+  }
+
+  let activeCrafters = 0;
+  if (!params.crafterId) {
+    const userSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+    if (userSheet) {
+       const uRows = userSheet.getDataRange().getValues();
+       for(let j=1; j<uRows.length; j++) {
+           if (uRows[j][1] === 'crafter' && uRows[j][7] === 'Active') {
+               activeCrafters++;
+           }
+       }
     }
   }
 
@@ -367,7 +381,9 @@ function handleGetDashboardStats(params, headers) {
     totalOrders: totalOrders,
     totalEarnings: '₹' + totalEarningsNum,
     pendingPayout: '₹' + pendingPayoutNum,
-    paidEarnings: '₹' + paidEarningsNum
+    paidEarnings: '₹' + paidEarningsNum,
+    pendingApprovals: pendingApprovals,
+    activeCrafters: activeCrafters
   }, headers);
 }
 
