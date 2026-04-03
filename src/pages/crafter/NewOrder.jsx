@@ -213,8 +213,8 @@ export default function NewOrder() {
         setItems(newItems);
         setPendingUploads(null);
 
-        // Securely pass RAW 50MB binary files without memory-crashing DOM compressions by directly offloading to ImageKit
-        const uploadPromises = newObjs.map(async (fObj) => {
+        // Use Sequential Processing to avoid local network bandwidth saturation crashing from processing 3x 50MB files concurrently
+        for (const fObj of newObjs) {
             setItems(prev => {
                 const copy = [...prev];
                 if (!copy[index]) return copy;
@@ -253,9 +253,7 @@ export default function NewOrder() {
                     return copy;
                 });
             }
-        });
-
-        await Promise.all(uploadPromises);
+        }
     };
 
     const removeFileFromItem = (itemIndex, fileIndex) => {
