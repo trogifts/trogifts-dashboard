@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, UploadCloud, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
+import { Search, Filter, UploadCloud, CheckCircle, XCircle, MessageCircle, Download } from 'lucide-react';
 import { apiCall } from '../../api';
 
 export default function AdminOrders() {
@@ -257,16 +257,18 @@ export default function AdminOrders() {
                                             const downloadUrl = `${rawUrl}?ik-attachment=true`;
 
                                             return (
-                                                <div key={uidx} className="flex flex-col border border-gray-200 rounded-lg overflow-hidden hover:border-blue-500 transition-colors shadow-sm">
-                                                    <a href={rawUrl} target="_blank" rel="noreferrer" className="block text-center p-3 bg-white hover:bg-blue-50 border-b border-gray-100 flex-grow transition-colors">
-                                                        <div className="text-blue-600 font-bold text-sm">
+                                                <div key={uidx} className="flex flex-col border border-gray-200 rounded-lg overflow-hidden hover:border-gray-400 transition-colors shadow-sm group">
+                                                    <a href={rawUrl} target="_blank" rel="noreferrer" className="block text-center p-3 bg-white border-b border-gray-100 flex-grow transition-colors hover:bg-gray-50 flex flex-col items-center justify-center">
+                                                        <div className="text-gray-800 font-bold text-sm">
                                                             {group.title !== 'General'
                                                                 ? `${group.title.split('(')[0].trim()} Photo ${uidx + 1}`
                                                                 : `Photo ${uidx + 1} (Unsorted)`}
                                                         </div>
+                                                        <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider font-semibold">VIEW PREVIEW</span>
                                                     </a>
-                                                    <a href={downloadUrl} className="block text-center p-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold transition-colors">
-                                                        📥 Download RAW (Max Quality)
+                                                    <a href={downloadUrl} className="p-2.5 bg-gray-50 hover:bg-blue-50 text-blue-600 hover:text-blue-800 text-[11px] font-bold transition-colors flex items-center justify-center">
+                                                        <Download size={14} className="mr-1.5" />
+                                                        <span>DOWNLOAD ORIGINAL</span>
                                                     </a>
                                                 </div>
                                             );
