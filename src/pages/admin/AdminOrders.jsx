@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, UploadCloud, CheckCircle, XCircle, MessageCircle, Download } from 'lucide-react';
+import { Search, Filter, UploadCloud, CheckCircle, XCircle, MessageCircle, Download, ExternalLink } from 'lucide-react';
 import { apiCall } from '../../api';
 
 export default function AdminOrders() {
@@ -10,6 +10,7 @@ export default function AdminOrders() {
     const [toastMessage, setToastMessage] = useState(null);
     const [uploadingOrder, setUploadingOrder] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     const statuses = ['All', 'Order Placed', 'Payment Verify', 'Waiting for Approval', 'Changes Requested', 'Approved', 'Printed', 'Shipped', 'Delivered'];
 
@@ -30,7 +31,10 @@ export default function AdminOrders() {
 
     const filteredOrders = statusFilter === 'All'
         ? orders
-        : orders.filter(o => o.status === statusFilter);
+        : orders.filter(o => {
+            if (statusFilter === 'Changes Requested') return o.status.startsWith('Changes Requested');
+            return o.status === statusFilter;
+        });
 
     const updateStatus = async (id, newStatus) => {
         setActionLoading(true);
@@ -56,25 +60,62 @@ export default function AdminOrders() {
         reader.onerror = error => reject(error);
     });
 
-    const handleDesignUpload = async (e, orderId) => {
+    const handleDesignUpload = async (e, orderId, photoTitle = null) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        setUploadingOrder(orderId);
+        setUploadingOrder(photoTitle ? `${orderId}-${photoTitle}` : orderId);
         setActionLoading(true);
+        setUploadProgress(0);
         try {
             const base64 = await fileToBase64(file);
+            let currentDesignUrl = (inspectOrder && inspectOrder.id === orderId) ? inspectOrder.designUrl : orders.find(o => o.id === orderId)?.designUrl || "";
+
+            if (currentDesignUrl && photoTitle) {
+                const lines = currentDesignUrl.split('\n');
+                const newLines = [];
+                let skip = false;
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].trim() === `--- ${photoTitle} ---`) {
+                        skip = true;
+                        continue;
+                    }
+                    if (skip && lines[i].trim().startsWith('http')) {
+                        skip = false;
+                        continue; // skip the old url
+                    }
+                    if (skip && lines[i].trim().startsWith('---')) {
+                        skip = false;
+                    }
+                    if (!skip) {
+                        newLines.push(lines[i]);
+                    }
+                }
+                currentDesignUrl = newLines.join('\n').trim();
+            }
+
             const res = await apiCall('uploadDesign', {
                 orderId: orderId,
                 fileName: file.name,
                 mimeType: file.type,
-                fileBase64: base64
-            });
+                fileBase64: base64,
+                photoTitle: photoTitle,
+                existingDesignUrl: currentDesignUrl
+            }, (p) => setUploadProgress(p));
 
             if (res.success) {
                 setToastMessage(`Design successfully securely attached to ${orderId}`);
                 setTimeout(() => setToastMessage(null), 4000);
-                setOrders(orders.map(o => o.id === orderId ? { ...o, designUrl: res.url, status: res.status || 'Waiting for Approval' } : o));
+                
+                // If backend still returns a single url (legacy), we append it locally, 
+                // else if it returns the full new string (updated backend), we use it.
+                // We'll trust what backend gives us, but for frontend consistency if backend is old:
+                const returnedUrl = res.url || res.finalUrl || '';
+                
+                setOrders(orders.map(o => o.id === orderId ? { ...o, designUrl: returnedUrl, status: res.status || 'Waiting for Approval' } : o));
+                if (inspectOrder && inspectOrder.id === orderId) {
+                    setInspectOrder({...inspectOrder, designUrl: returnedUrl, status: res.status || 'Waiting for Approval'});
+                }
             } else {
                 throw new Error(res.error || "API reported failure");
             }
@@ -112,10 +153,32 @@ export default function AdminOrders() {
         return groups;
     };
 
+    const parseDesigns = (designStr) => {
+        if (!designStr) return [];
+        const lines = designStr.split('\n').filter(l => l.trim() !== '');
+        const designs = [];
+        let currentTitle = "Design";
+        
+        for (const line of lines) {
+            if (line.startsWith('---') && line.endsWith('---')) {
+                currentTitle = line.replace(/---/g, '').trim();
+            } else if (line.startsWith('http')) {
+                designs.push({ title: currentTitle, url: line.trim() });
+                currentTitle = `Design ${designs.length + 1}`;
+            }
+        }
+        if (designs.length === 0) {
+            lines.forEach((l, i) => {
+                if (l.startsWith('http')) designs.push({ title: `Design ${i + 1}`, url: l.trim() });
+            });
+        }
+        return designs.length > 0 ? designs : [{ title: 'Design', url: designStr }];
+    };
+
     const stats = {
         total: orders.length,
         placed: orders.filter(o => o.status === 'Order Placed').length,
-        changesReq: orders.filter(o => o.status === 'Changes Required').length,
+        changesReq: orders.filter(o => o.status && o.status.startsWith('Changes Requested')).length,
         approved: orders.filter(o => o.status === 'Approved').length,
         delivered: orders.filter(o => o.status === 'Delivered').length,
         waiting: orders.filter(o => o.status === 'Waiting for Approval').length,
@@ -197,10 +260,15 @@ export default function AdminOrders() {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {loading ? (
                                 <tr><td colSpan="5" className="text-center py-4">Loading...</td></tr>
-                            ) : filteredOrders.map((order) => (
-                                <tr key={order.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        <span className="font-semibold">{order.id}</span>
+                            ) : (
+                                <>
+                                    {filteredOrders.filter(o => o.status !== 'Delivered').map((order) => (
+                                        <tr key={order.id} className={`${order.status && order.status.startsWith('Changes Requested') ? 'bg-red-100 hover:bg-red-200' : 'bg-white hover:bg-gray-50'}`}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="font-bold">{order.id}</span>
+                                                    <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-500">{order.date}</span>
+                                                </div>
                                         <div className="text-xs text-gray-500 mt-0.5 space-y-0.5">
                                             <p>{order.deliveryMethod}</p>
                                             <p>Qty: {order.quantity || 1} • Price: ₹{order.price || 0}</p>
@@ -212,12 +280,19 @@ export default function AdminOrders() {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <select
-                                            value={order.status}
+                                            value={order.status && order.status.startsWith('Changes Requested') ? 'Changes Requested' : order.status}
                                             onChange={(e) => updateStatus(order.id, e.target.value)}
-                                            className={`text-sm border-gray-300 rounded-md focus:ring-blue-500 py-1.5 focus:border-blue-500 ${order.status === 'Waiting for Approval' ? 'bg-orange-50 text-orange-800 border-orange-200 font-bold' : order.status === 'Approved' ? 'bg-green-50 text-green-800 border-green-200 font-bold' : ''}`}
+                                            className={`text-sm border-gray-300 rounded-md focus:ring-blue-500 py-1.5 focus:border-blue-500 ${order.status === 'Waiting for Approval' ? 'bg-orange-50 text-orange-800 border-orange-200 font-bold' : order.status === 'Approved' ? 'bg-green-50 text-green-800 border-green-200 font-bold' : order.status && order.status.startsWith('Changes Requested') ? 'bg-red-50 text-red-800 border-red-200 font-bold' : ''}`}
                                         >
                                             {statuses.slice(1).map(s => <option key={s} value={s}>{s}</option>)}
                                         </select>
+                                        
+                                        {order.status && order.status.startsWith('Changes Requested -') && (
+                                            <div className="mt-2 text-[10px] text-red-600 font-bold bg-red-50 px-2 py-1 rounded border border-red-100 flex flex-col whitespace-pre-wrap">
+                                                <span className="uppercase tracking-wider text-[8px] text-red-400 mb-0.5">Crafter Note:</span>
+                                                {order.status.replace('Changes Requested - ', '')}
+                                            </div>
+                                        )}
 
                                         {order.crafterPhone && (
                                             <a href={`https://wa.me/${String(order.crafterPhone).replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hello, regarding TroGifts Order ' + order.id + '. Current Status: ' + order.status)}`} target="_blank" rel="noreferrer" className="mt-2 flex items-center text-xs text-green-600 hover:text-green-800 font-bold transition-colors">
@@ -235,25 +310,93 @@ export default function AdminOrders() {
                                         ) : (<span className="text-gray-400 text-xs block">No Payment</span>)}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        {uploadingOrder === order.id ? (
-                                            <span className="text-gray-500 mx-2 flex items-center justify-end w-full space-x-1 animate-pulse font-bold bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
-                                                <span>Uploading...</span>
-                                            </span>
-                                        ) : order.designUrl ? (
-                                            <a href={order.designUrl} target="_blank" rel="noreferrer" className="text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 px-3 py-1.5 rounded-lg mx-2 flex items-center justify-end w-full space-x-1 font-bold transition-colors">
+                                        {order.designUrl ? (
+                                            <button onClick={() => setInspectOrder(order)} className="text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 px-3 py-1.5 rounded-lg mx-2 flex items-center justify-end w-full space-x-1 font-bold transition-colors">
                                                 <CheckCircle size={16} />
-                                                <span>Design Ready</span>
-                                            </a>
+                                                <span>Designs Ready</span>
+                                            </button>
                                         ) : (
-                                            <label className="text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-3 py-1.5 rounded-lg mx-2 flex items-center justify-end w-full space-x-1 cursor-pointer font-bold transition-colors">
+                                            <button onClick={() => setInspectOrder(order)} className="text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-3 py-1.5 rounded-lg mx-2 flex items-center justify-end w-full space-x-1 cursor-pointer font-bold transition-colors">
                                                 <UploadCloud size={16} />
                                                 <span>Upload Design</span>
-                                                <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => handleDesignUpload(e, order.id)} />
-                                            </label>
+                                            </button>
                                         )}
                                     </td>
                                 </tr>
                             ))}
+
+                                    {filteredOrders.some(o => o.status === 'Delivered') && (
+                                        <tr>
+                                            <td colSpan="5" className="bg-gray-100/80 px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-widest border-y border-gray-200">
+                                                Delivered Archive
+                                            </td>
+                                        </tr>
+                                    )}
+
+                                    {filteredOrders.filter(o => o.status === 'Delivered').map((order) => (
+                                        <tr key={order.id} className="bg-green-100 hover:bg-green-200">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="font-bold">{order.id}</span>
+                                                    <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-500">{order.date}</span>
+                                                </div>
+                                                <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                                                    <p>{order.deliveryMethod}</p>
+                                                    <p>Qty: {order.quantity || 1} • Price: ₹{order.price || 0}</p>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <span className="block font-medium">{order.crafterId}</span>
+                                                <span className="block text-xs text-blue-600 font-semibold mt-0.5">Comm: ₹{order.commission || 0}</span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <select
+                                                    value={order.status && order.status.startsWith('Changes Requested') ? 'Changes Requested' : order.status}
+                                                    onChange={(e) => updateStatus(order.id, e.target.value)}
+                                                    className={`text-sm border-gray-300 rounded-md focus:ring-blue-500 py-1.5 focus:border-blue-500 ${order.status === 'Waiting for Approval' ? 'bg-orange-50 text-orange-800 border-orange-200 font-bold' : order.status === 'Approved' ? 'bg-green-50 text-green-800 border-green-200 font-bold' : order.status && order.status.startsWith('Changes Requested') ? 'bg-red-50 text-red-800 border-red-200 font-bold' : ''}`}
+                                                >
+                                                    {statuses.slice(1).map(s => <option key={s} value={s}>{s}</option>)}
+                                                </select>
+                                                
+                                                {order.status && order.status.startsWith('Changes Requested -') && (
+                                                    <div className="mt-2 text-[10px] text-red-600 font-bold bg-red-50 px-2 py-1 rounded border border-red-100 flex flex-col whitespace-pre-wrap">
+                                                        <span className="uppercase tracking-wider text-[8px] text-red-400 mb-0.5">Crafter Note:</span>
+                                                        {order.status.replace('Changes Requested - ', '')}
+                                                    </div>
+                                                )}
+
+                                                {order.crafterPhone && (
+                                                    <a href={`https://wa.me/${String(order.crafterPhone).replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hello, regarding TroGifts Order ' + order.id + '. Current Status: ' + order.status)}`} target="_blank" rel="noreferrer" className="mt-2 flex items-center text-xs text-green-600 hover:text-green-800 font-bold transition-colors">
+                                                        <MessageCircle size={14} className="mr-1" /> WhatsApp Crafter
+                                                    </a>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center space-y-2">
+                                                {order.photoUrl && order.photoUrl !== 'No Photo' ? (
+                                                    <button onClick={() => setInspectOrder(order)} className="text-blue-600 hover:text-blue-800 hover:underline text-xs block font-bold w-full bg-blue-50 py-1.5 px-2 rounded-md transition-colors">Inspect Items</button>
+                                                ) : (<span className="text-gray-400 text-xs block">No Photos</span>)}
+
+                                                {order.paymentUrl ? (
+                                                    <a href={order.paymentUrl} target="_blank" rel="noreferrer" className="text-green-600 hover:text-green-800 hover:underline text-xs block font-bold w-full bg-green-50 py-1.5 px-2 rounded-md transition-colors">View Payment</a>
+                                                ) : (<span className="text-gray-400 text-xs block">No Payment</span>)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                {order.designUrl ? (
+                                                    <button onClick={() => setInspectOrder(order)} className="text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 px-3 py-1.5 rounded-lg mx-2 flex items-center justify-end w-full space-x-1 font-bold transition-colors">
+                                                        <CheckCircle size={16} />
+                                                        <span>Designs Ready</span>
+                                                    </button>
+                                                ) : (
+                                                    <button onClick={() => setInspectOrder(order)} className="text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-3 py-1.5 rounded-lg mx-2 flex items-center justify-end w-full space-x-1 cursor-pointer font-bold transition-colors">
+                                                        <UploadCloud size={16} />
+                                                        <span>Upload Design</span>
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </ >
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -293,20 +436,52 @@ export default function AdminOrders() {
                                             const rawUrl = url.split('?')[0];
                                             const downloadUrl = `${rawUrl}?ik-attachment=true`;
 
+                                            const photoTitleStr = group.title !== 'General' ? `${group.title.split('(')[0].trim()} Photo ${uidx + 1}` : `Photo ${uidx + 1} (Unsorted)`;
+                                            const isThisPhotoUploading = uploadingOrder === `${inspectOrder.id}-${photoTitleStr}`;
+                                            const parsedDesigns = parseDesigns(inspectOrder.designUrl);
+                                            let specificDesign = parsedDesigns.find(d => d.title === photoTitleStr);
+
+                                            // Fallback for legacy designs that don't have header titles
+                                            if (!specificDesign && parsedDesigns.length > 0 && parsedDesigns[0].title === 'Design 1' && idx === 0 && uidx === 0) {
+                                                specificDesign = parsedDesigns[0];
+                                            }
+
                                             return (
                                                 <div key={uidx} className="flex flex-col border border-gray-200 rounded-lg overflow-hidden hover:border-gray-400 transition-colors shadow-sm group">
                                                     <a href={rawUrl} target="_blank" rel="noreferrer" className="block text-center p-3 bg-white border-b border-gray-100 flex-grow transition-colors hover:bg-gray-50 flex flex-col items-center justify-center">
                                                         <div className="text-gray-800 font-bold text-sm">
-                                                            {group.title !== 'General'
-                                                                ? `${group.title.split('(')[0].trim()} Photo ${uidx + 1}`
-                                                                : `Photo ${uidx + 1} (Unsorted)`}
+                                                            {photoTitleStr}
                                                         </div>
                                                         <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider font-semibold">VIEW PREVIEW</span>
                                                     </a>
-                                                    <a href={downloadUrl} className="p-2.5 bg-gray-50 hover:bg-blue-50 text-blue-600 hover:text-blue-800 text-[11px] font-bold transition-colors flex items-center justify-center">
-                                                        <Download size={14} className="mr-1.5" />
-                                                        <span>DOWNLOAD ORIGINAL</span>
-                                                    </a>
+                                                    <div className={`grid ${specificDesign ? 'grid-cols-3' : 'grid-cols-2'} divide-x divide-gray-200 border-b border-gray-100 bg-gray-50`}>
+                                                        <a href={downloadUrl} className="p-2.5 hover:bg-blue-50 text-blue-600 hover:text-blue-800 text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center">
+                                                            <Download size={14} className="mb-0.5" />
+                                                            <span>DOWNLOAD</span>
+                                                        </a>
+                                                        
+                                                        {specificDesign && (
+                                                            <a href={specificDesign.url} target="_blank" rel="noreferrer" className="p-2.5 hover:bg-purple-50 text-purple-600 hover:text-purple-800 text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center">
+                                                                <ExternalLink size={14} className="mb-0.5" />
+                                                                <span>VIEW</span>
+                                                            </a>
+                                                        )}
+                                                        
+                                                        {isThisPhotoUploading ? (
+                                                            <div className="p-2.5 bg-gray-50 text-gray-500 text-[10px] font-bold flex flex-col items-center justify-center text-center w-full">
+                                                                <span className="mb-1">Upldg...</span>
+                                                                <div className="w-[80%] bg-gray-200 rounded-full h-1.5 opacity-80">
+                                                                    <div className="bg-blue-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <label className={`p-2.5 hover:bg-green-50 ${specificDesign ? 'text-gray-600 hover:text-gray-800' : 'text-green-600 hover:text-green-800'} text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center cursor-pointer`}>
+                                                                <UploadCloud size={14} className="mb-0.5" />
+                                                                <span>{specificDesign ? 'REPLACE' : 'UPLOAD'}</span>
+                                                                <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => handleDesignUpload(e, inspectOrder.id, photoTitleStr)} />
+                                                            </label>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
