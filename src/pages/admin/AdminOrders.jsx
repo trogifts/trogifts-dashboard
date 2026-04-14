@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, UploadCloud, CheckCircle, XCircle, MessageCircle, Download, ExternalLink } from 'lucide-react';
+import { Search, Filter, UploadCloud, CheckCircle, XCircle, MessageCircle, Download, ExternalLink, Package } from 'lucide-react';
 import { apiCall } from '../../api';
 
 export default function AdminOrders() {
@@ -184,6 +184,10 @@ export default function AdminOrders() {
         waiting: orders.filter(o => o.status === 'Waiting for Approval').length,
     };
 
+    const pendingOrders = orders.filter(o => o.status !== 'Delivered');
+    const pendingCount = pendingOrders.length;
+    const pendingRevenue = pendingOrders.reduce((sum, o) => sum + (parseFloat(o.price) || 0), 0);
+
     return (
         <div className="space-y-6">
             <div className="sm:flex sm:items-center sm:justify-between">
@@ -220,6 +224,32 @@ export default function AdminOrders() {
                     <span className="text-[11px] text-orange-800 font-bold uppercase tracking-wider">Waiting</span>
                 </div>
             </div>
+
+            {pendingCount > 0 ? (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between shadow-[0_4px_12px_-5px_rgba(217,119,6,0.3)] hover:border-amber-300 transition-colors">
+                   <div className="flex items-center space-x-4">
+                        <div className="bg-amber-100/80 p-3 rounded-xl border border-amber-200">
+                            <Package className="text-amber-600" size={28} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg text-amber-900 leading-none mb-1">Pending to Deliver</h3>
+                            <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">All active unfulfilled orders</p>
+                        </div>
+                   </div>
+                   <div className="text-right flex flex-col justify-center">
+                       <div className="text-3xl font-black text-amber-900 leading-none">{pendingCount} <span className="text-sm font-bold text-amber-700 ml-0.5">Orders</span></div>
+                       <div className="text-[11px] font-extrabold text-amber-800 bg-amber-200/50 px-2 py-1 rounded inline-block mt-1 ring-1 ring-amber-300">
+                           VALUE: ₹{pendingRevenue}
+                       </div>
+                   </div>
+                </div>
+            ) : (
+                <div className="bg-green-50 border border-green-200 p-4 rounded-xl flex flex-col items-center justify-center shadow-[0_4px_12px_-5px_rgba(22,163,74,0.15)] text-center">
+                    <CheckCircle className="text-green-500 mb-2" size={32} />
+                    <h3 className="font-bold text-lg text-green-900 leading-none mb-1">All Caught Up!</h3>
+                    <p className="text-sm font-medium text-green-700">There are no pending orders left to deliver.</p>
+                </div>
+            )}
 
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-center">
                 <div className="relative w-full sm:max-w-xs">
