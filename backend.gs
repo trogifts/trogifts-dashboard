@@ -28,7 +28,7 @@ function doPost(e) {
     } else if (action === 'updateOrderPhotos') {
       return handleUpdateOrderPhotos(data, headers);
     } else if (action === 'submitPayout') {
-      return ContentService.createTextOutput(JSON.stringify(handleSubmitPayout(data))).setMimeType(ContentService.MimeType.JSON);
+      return successResponse(handleSubmitPayout(data), headers);
     } else if (action === 'updateCrafterStatus') {
       return handleUpdateCrafterStatus(data, headers);
     } else {
@@ -362,6 +362,7 @@ function handleGetDashboardStats(params, headers) {
   }
 
   let paidEarningsNum = 0;
+  let recentPayouts = [];
   let payoutSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Payouts');
   
   if (!payoutSheet) {
@@ -370,13 +371,22 @@ function handleGetDashboardStats(params, headers) {
   } else {
     const pRows = payoutSheet.getDataRange().getValues();
     for (let i = 1; i < pRows.length; i++) {
-      if (params.crafterId && pRows[i][1] === params.crafterId) {
-        paidEarningsNum += parseFloat(pRows[i][2]) || 0;
-      } else if (!params.crafterId) {
-        paidEarningsNum += parseFloat(pRows[i][2]) || 0;
-      }
+        const amt = parseFloat(pRows[i][2]) || 0;
+        if (params.crafterId && pRows[i][1] === params.crafterId) {
+            paidEarningsNum += amt;
+            recentPayouts.push({
+                id: pRows[i][0],
+                amount: amt,
+                date: typeof pRows[i][3] === 'object' ? pRows[i][3].toISOString().split('T')[0] : pRows[i][3]
+            });
+        } else if (!params.crafterId) {
+            paidEarningsNum += amt;
+        }
     }
   }
+
+  // Sort descending
+  recentPayouts.sort((a,b) => new Date(b.date) - new Date(a.date));
 
   let pendingPayoutNum = deliveredEarningsNum - paidEarningsNum;
   if (pendingPayoutNum < 0) pendingPayoutNum = 0;
@@ -387,7 +397,8 @@ function handleGetDashboardStats(params, headers) {
     pendingPayout: '₹' + pendingPayoutNum,
     paidEarnings: '₹' + paidEarningsNum,
     pendingApprovals: pendingApprovals,
-    activeCrafters: activeCrafters
+    activeCrafters: activeCrafters,
+    history: recentPayouts
   }, headers);
 }
 

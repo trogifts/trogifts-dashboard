@@ -464,12 +464,12 @@ export default function NewOrder() {
                 <p className="mt-1 text-sm text-gray-500">Submit multiple customizations in a single transaction.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="bg-white shadow-sm border border-gray-100 rounded-xl p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="bg-white shadow-sm border border-gray-100 rounded-xl p-4 sm:p-6 space-y-6">
 
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Method</label>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div
                                 onClick={() => handleDeliveryChange('Deliver to Customer')}
                                 className={`cursor-pointer border rounded-lg p-3 flex flex-col items-center justify-center text-center transition-all ${formData.deliveryMethod === 'Deliver to Customer' ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 shadow-sm' : 'border-gray-200 hover:border-blue-300 bg-white'}`}
@@ -510,12 +510,12 @@ export default function NewOrder() {
                     )}
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 p-5 rounded-xl flex flex-col sm:flex-row justify-between items-center">
-                    <div>
+                <div className="bg-blue-50 border border-blue-200 p-4 sm:p-5 rounded-xl flex flex-col sm:flex-row justify-between items-center sm:items-start text-center sm:text-left gap-4 sm:gap-0">
+                    <div className="w-full flex flex-col items-center sm:items-start">
                         <div className="flex items-center space-x-2">
                             <span className="text-gray-500 block text-xs uppercase font-bold tracking-wider">Total Customer Price</span>
                             {hasDiscount && (
-                                <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold">5% Discount Applied</span>
+                                <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold">5% Discount</span>
                             )}
                         </div>
                         <div className="flex items-center space-x-2 mt-0.5">
@@ -525,7 +525,7 @@ export default function NewOrder() {
                             )}
                         </div>
                     </div>
-                    <div className="text-center sm:text-right mt-3 sm:mt-0">
+                    <div className="w-full text-center sm:text-right border-t border-blue-100 sm:border-t-0 pt-3 sm:pt-0 mt-1 sm:mt-0">
                         <span className="text-blue-600 block text-xs uppercase font-bold tracking-wider">Your Combined Commission</span>
                         <span className="font-bold text-blue-700 text-3xl">₹{commission}</span>
                     </div>
@@ -535,7 +535,7 @@ export default function NewOrder() {
                     <h3 className="text-lg font-bold text-gray-800">Customization Details ({items.length})</h3>
                     <div className="space-y-6">
                         {items.map((item, index) => (
-                            <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-5 space-y-4">
+                            <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-5 space-y-4">
                                 <div className="flex justify-between items-center border-b border-gray-200 pb-2">
                                     <h4 className="font-bold text-sm text-gray-500 uppercase tracking-widest">Item #{index + 1}</h4>
                                 </div>
@@ -578,7 +578,7 @@ export default function NewOrder() {
                                     </div>
 
                                     {item.files.length > 0 && (
-                                        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3 mt-3">
+                                        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 mt-3">
                                             {item.files.map((fObj, fi) => (
                                                 <div key={fi} className="relative aspect-square rounded-md border border-gray-200 overflow-hidden group shadow-sm bg-gray-100">
                                                     <img src={URL.createObjectURL(fObj.file)} alt="preview" className="object-cover w-full h-full" />

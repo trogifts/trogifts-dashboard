@@ -70,14 +70,39 @@ export default function Earnings() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-8">
                 <div className="px-6 py-5 border-b border-gray-100 sm:flex sm:items-center sm:justify-between">
                     <h3 className="text-lg font-semibold text-gray-900">Payout History</h3>
-                    <button className="mt-3 sm:mt-0 text-sm inline-flex items-center text-blue-600 hover:text-blue-800 font-medium">
-                        Request Payout <ArrowUpRight size={16} className="ml-1" />
-                    </button>
+                    <span className="mt-3 sm:mt-0 text-[13px] inline-flex items-center text-gray-500 font-medium italic bg-gray-50 px-3 py-1.5 rounded border border-gray-100">
+                        Payouts process automatically every weekend
+                    </span>
                 </div>
 
-                <div className="p-6 text-center text-sm text-gray-500">
-                    No payout history available yet.
-                </div>
+                {stats.history && stats.history.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Payout Reference</th>
+                                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Amount Transferred</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {stats.history.map((payout, idx) => (
+                                    <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                                            {typeof payout.date === 'string' && payout.date.includes('T') ? new Date(payout.date).toLocaleDateString() : payout.date}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{payout.id}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-green-600 text-right">₹{payout.amount}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="p-6 text-center text-sm text-gray-500 font-medium">
+                        {loading ? 'Checking records...' : 'No payout history available yet.'}
+                    </div>
+                )}
             </div>
         </div>
     );
