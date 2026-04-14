@@ -26,6 +26,39 @@ export default function AdminCrafters() {
         loadCrafters();
     }, []);
 
+    const renderCrafterCard = (crafter) => (
+        <div key={crafter.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">{crafter.name}</h3>
+                    <select
+                        value={crafter.status}
+                        onChange={(e) => updateStatus(crafter.id, e.target.value)}
+                        className={`text-xs font-bold px-2 py-1 rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-blue-500 ${crafter.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}
+                    >
+                        <option value="Active">Active</option>
+                        <option value="Pending Validation">Pending</option>
+                    </select>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">{crafter.email}</p>
+
+                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between text-sm">
+                    <div>
+                        <span className="text-gray-500 block">Referral ID</span>
+                        <span className="font-medium text-gray-900">{crafter.referral}</span>
+                    </div>
+                    <div className="text-right">
+                        <span className="text-gray-500 block font-bold">Pending Payout</span>
+                        <span className={`font-extrabold ${(crafter.pendingPayout || 0) > 0 ? 'text-red-500' : 'text-green-600'}`}>₹{crafter.pendingPayout || 0}</span>
+                    </div>
+                </div>
+                <div className="mt-4">
+                    <button onClick={() => openStats(crafter)} className="w-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 py-2.5 rounded-lg text-sm font-bold transition-colors">View Earnings & Stats</button>
+                </div>
+            </div>
+        </div>
+    );
+
     const updateStatus = async (id, newStatus) => {
         // Optimistic UI update
         setCrafters(crafters.map(c => c.id === id ? { ...c, status: newStatus } : c));
@@ -99,41 +132,29 @@ export default function AdminCrafters() {
             {loading ? (
                 <div className="text-center py-12 text-gray-500">Loading crafters...</div>
             ) : (
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {crafters.map((crafter) => (
-                        <div key={crafter.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-semibold text-gray-900">{crafter.name}</h3>
-                                    <select
-                                        value={crafter.status}
-                                        onChange={(e) => updateStatus(crafter.id, e.target.value)}
-                                        className={`text-xs font-bold px-2 py-1 rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-blue-500 ${crafter.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}
-                                    >
-                                        <option value="Active">Active</option>
-                                        <option value="Pending Validation">Pending</option>
-                                    </select>
-                                </div>
-                                <p className="text-sm text-gray-500 mt-1">{crafter.email}</p>
-
-                                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between text-sm">
-                                    <div>
-                                        <span className="text-gray-500 block">Referral ID</span>
-                                        <span className="font-medium text-gray-900">{crafter.referral}</span>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-gray-500 block">Total Orders</span>
-                                        <span className="font-medium text-gray-900">{crafter.ordersCount || 0}</span>
-                                    </div>
-                                </div>
-                                <div className="mt-4">
-                                    <button onClick={() => openStats(crafter)} className="w-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 py-2.5 rounded-lg text-sm font-bold transition-colors">View Earnings & Stats</button>
-                                </div>
+                <div className="space-y-8">
+                    {crafters.filter(c => (c.pendingPayout || 0) > 0).length > 0 && (
+                        <div>
+                            <h2 className="text-lg font-bold text-red-600 mb-4 tracking-tight flex items-center"><Hourglass size={20} className="mr-2" /> Action Required (Pending Payouts)</h2>
+                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                {crafters.filter(c => (c.pendingPayout || 0) > 0).map(renderCrafterCard)}
                             </div>
                         </div>
-                    ))}
+                    )}
+
+                    {crafters.filter(c => (c.pendingPayout || 0) === 0).length > 0 && (
+                        <div className={`${crafters.filter(c => (c.pendingPayout || 0) > 0).length > 0 ? 'opacity-80 hover:opacity-100 transition-opacity' : ''}`}>
+                            {crafters.filter(c => (c.pendingPayout || 0) > 0).length > 0 && (
+                                <h2 className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-widest border-b border-gray-200 pb-2">Settled Accounts (₹0 Pending)</h2>
+                            )}
+                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                {crafters.filter(c => (c.pendingPayout || 0) === 0).map(renderCrafterCard)}
+                            </div>
+                        </div>
+                    )}
+
                     {crafters.length === 0 && (
-                        <div className="col-span-full text-center py-8 text-gray-500">No crafters found.</div>
+                        <div className="text-center py-8 text-gray-500">No crafters found.</div>
                     )}
                 </div>
             )}

@@ -226,9 +226,13 @@ function handleUploadDesign(data, headers) {
     const rows = sheet.getDataRange().getValues();
     for (let i = 1; i < rows.length; i++) {
         if (rows[i][0] === data.orderId) {
-            sheet.getRange(i + 1, 9).setValue(url);
+            let existing = data.existingDesignUrl || sheet.getRange(i + 1, 9).getValue() || "";
+            let newUrlStr = data.photoTitle ? `--- ${data.photoTitle} ---\n${url}` : url;
+            let finalStr = existing && data.photoTitle ? existing + "\n" + newUrlStr : newUrlStr;
+            
+            sheet.getRange(i + 1, 9).setValue(finalStr);
             sheet.getRange(i + 1, 7).setValue('Waiting for Approval');
-            return successResponse({ success: true, url: url, orderId: data.orderId, status: 'Waiting for Approval' }, headers);
+            return successResponse({ success: true, finalUrl: finalStr, orderId: data.orderId, status: 'Waiting for Approval' }, headers);
         }
     }
     return errorResponse('Order not found', headers);
@@ -392,18 +396,42 @@ function handleGetCrafters(headers) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
   if (!sheet) return errorResponse('Users sheet not found', headers);
   
+  const orderSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Orders');
+  const orderRows = orderSheet ? orderSheet.getDataRange().getValues() : [];
+  
+  const payoutSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Payouts');
+  const payoutRows = payoutSheet ? payoutSheet.getDataRange().getValues() : [];
+  
   const rows = sheet.getDataRange().getValues();
   const crafters = [];
   
   for (let i = 0; i < rows.length; i++) {
     if (rows[i][1] === 'crafter') {
+      const refId = rows[i][6];
+      let deliveredEarnings = 0;
+      for (let j = 1; j < orderRows.length; j++) {
+         if (orderRows[j][1] === refId && orderRows[j][6] === 'Delivered') {
+            deliveredEarnings += parseFloat(orderRows[j][13]) || 0;
+         }
+      }
+      
+      let paidEarnings = 0;
+      for (let k = 1; k < payoutRows.length; k++) {
+         if (payoutRows[k][1] === refId) {
+             paidEarnings += parseFloat(payoutRows[k][2]) || 0;
+         }
+      }
+      
+      let pendingPayout = deliveredEarnings - paidEarnings;
+      if (pendingPayout < 0) pendingPayout = 0;
+      
       crafters.push({
         id: rows[i][0],
         name: rows[i][2],
         email: rows[i][3],
-        referral: rows[i][6],
+        referral: refId,
         status: rows[i][7],
-        ordersCount: 'N/A'
+        pendingPayout: pendingPayout
       });
     }
   }

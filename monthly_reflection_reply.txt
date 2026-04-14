@@ -1,0 +1,15 @@
+Reply for: "Share what you learned this month"
+==============================================
+
+This month was honestly one of the most hands-on learning experiences I've had in a while.
+
+I dove deep into building a real production dashboard from scratch — handling everything from authentication flows, Google Sheets as a live database, to integrating a CDN (ImageKit) for handling large uncompressed image uploads directly from the browser.
+
+The biggest lesson? **Architecture decisions compound fast.** Early on, we built uploads through Google Drive via base64 encoding on the server side. It worked, but it became a bottleneck the moment file sizes grew beyond a few MBs. Migrating to direct client-side CDN uploads with secure server-side HMAC signatures taught me that thinking about scale *before* you need it saves enormous debugging pain later.
+
+I also learned that **sequential processing beats parallel when bandwidth is the constraint.** We had a bug where uploading 3 large files simultaneously was saturating the local router's bandwidth and dropping packets. Switching to a sequential queue (one at a time, full bandwidth dedicated) made uploads dramatically more reliable.
+
+On the people side, I learned that **clear status visibility is everything for operators.** Admin panels are only useful if the person using them can instantly understand the state of the world — which is why breaking out order counts by status (Placed, Waiting, Approved, Delivered) matters more than fancy animations.
+
+Overall: ship fast, measure real pain points, and fix the architecture when data proves it's necessary.
+
