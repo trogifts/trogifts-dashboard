@@ -16,6 +16,8 @@ export default function NewOrder() {
         quantity: '1'
     });
 
+    const [frontendOrderId] = useState(() => 'ORD-' + Math.floor(10000 + Math.random() * 90000));
+
     const [items, setItems] = useState([
         { customerName: '', template: 'Template A - Standard Classic', address: '', files: [] }
     ]);
@@ -423,7 +425,8 @@ export default function NewOrder() {
                 paymentUrl: currentPay ? currentPay.url : '',
                 price: ObjectFinancials.price,
                 originalPrice: ObjectFinancials.originalPrice,
-                commission: ObjectFinancials.commission
+                commission: ObjectFinancials.commission,
+                expectedOrderId: frontendOrderId
             };
 
             setProgress(80);
@@ -628,20 +631,21 @@ export default function NewOrder() {
 
                             <div className="bg-white p-2 border border-gray-200 rounded-xl shadow-sm inline-block">
                                 <img
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=Tro%20Gifts&am=${price}&cu=INR`)}`}
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=Tro%20Gifts&am=${price}&cu=INR&tn=Payment%20for%20${frontendOrderId}`)}`}
                                     alt="UPI QR Code"
                                     className="w-48 h-48 object-contain"
                                 />
                             </div>
                             <div className="mt-4 w-full sm:max-w-xs">
                                 <a
-                                    href={`upi://pay?pa=${upiId}&pn=Tro%20Gifts&am=${price}&cu=INR`}
+                                    href={`upi://pay?pa=${upiId}&pn=Tro%20Gifts&am=${price}&cu=INR&tn=Payment%20for%20${frontendOrderId}`}
                                     className="w-full flex items-center justify-center py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                                 >
                                     Open Local UPI App
                                 </a>
-                                <div className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
-                                    Paying To: <span className="font-bold text-gray-800 tracking-wide">{upiId}</span>
+                                <div className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100 flex flex-col space-y-1">
+                                    <p>Paying To: <span className="font-bold text-gray-800 tracking-wide">{upiId}</span></p>
+                                    <p>Order Ref: <span className="font-bold text-gray-800 tracking-wide">{frontendOrderId}</span></p>
                                 </div>
                             </div>
                         </div>

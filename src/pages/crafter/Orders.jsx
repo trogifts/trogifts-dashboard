@@ -89,6 +89,8 @@ export default function Orders() {
         for (const line of lines) {
             if (line.startsWith('---') && line.endsWith('---')) {
                 currentTitle = line.replace(/---/g, '').trim();
+            } else if (line.startsWith('[ORIG]')) {
+                continue; // IMPORTANT: Crafter panel completely skips original URL
             } else if (line.startsWith('http')) {
                 designs.push({ title: currentTitle, url: line.trim() });
                 currentTitle = `Design ${designs.length + 1}`;
@@ -100,7 +102,7 @@ export default function Orders() {
                 if (l.startsWith('http')) designs.push({ title: `Design ${i + 1}`, url: l.trim() });
             });
         }
-        return designs.length > 0 ? designs : [{ title: 'Design', url: designStr }];
+        return designs.length > 0 ? designs : [{ title: 'Design', url: designStr.replace(/\[ORIG\].*\n?/g, '').trim() }];
     };
 
     const parsePhotos = (photoStr) => {
@@ -153,7 +155,12 @@ export default function Orders() {
                             ) : (
                                 orders.map((order) => (
                                     <tr key={order.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{order.id}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <div className="flex items-center space-x-2">
+                                                <span className="font-bold">{order.id}</span>
+                                                <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-500">{order.date}</span>
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.customerName}</td>
                                         <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={order.status} /></td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm flex space-x-2 items-center">

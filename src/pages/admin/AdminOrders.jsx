@@ -60,6 +60,53 @@ export default function AdminOrders() {
         reader.onerror = error => reject(error);
     });
 
+    const addWatermark = (file) => {
+        return new Promise((resolve, reject) => {
+            if (!file.type.startsWith('image/')) {
+                resolve(null);
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.strokeStyle = 'rgba(100, 100, 100, 0.4)';
+                    ctx.lineWidth = Math.max(1, Math.floor(img.width / 300));
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    ctx.rotate(-Math.PI / 6);
+                    
+                    for (let i = -2; i <= 2; i++) {
+                        for (let j = -2; j <= 2; j++) {
+                            if (i === 0 && j === 0) {
+                                ctx.font = `bold ${Math.max(20, Math.floor(img.width / 8))}px sans-serif`;
+                                ctx.fillText('PREVIEW', 0, 0);
+                                ctx.strokeText('PREVIEW', 0, 0);
+                            } else {
+                                ctx.font = `bold ${Math.max(10, Math.floor(img.width / 15))}px sans-serif`;
+                                ctx.fillText('TROGIFTS', i * (img.width/2.5), j * (img.height/2.5));
+                            }
+                        }
+                    }
+                    resolve(canvas.toDataURL(file.type || 'image/jpeg', 0.8));
+                };
+                img.onerror = () => resolve(null);
+                img.src = e.target.result;
+            };
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+        });
+    };
+
     const handleDesignUpload = async (e, orderId, photoTitle = null) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -69,6 +116,7 @@ export default function AdminOrders() {
         setUploadProgress(0);
         try {
             const base64 = await fileToBase64(file);
+            const watermarkedBase64 = file.type.startsWith('image/') ? await addWatermark(file) : null;
             let currentDesignUrl = (inspectOrder && inspectOrder.id === orderId) ? inspectOrder.designUrl : orders.find(o => o.id === orderId)?.designUrl || "";
 
             if (currentDesignUrl && photoTitle) {
@@ -80,9 +128,8 @@ export default function AdminOrders() {
                         skip = true;
                         continue;
                     }
-                    if (skip && lines[i].trim().startsWith('http')) {
-                        skip = false;
-                        continue; // skip the old url
+                    if (skip && (lines[i].trim().startsWith('http') || lines[i].trim().startsWith('[ORIG]'))) {
+                        continue; // skip the old url and orig url
                     }
                     if (skip && lines[i].trim().startsWith('---')) {
                         skip = false;
@@ -94,14 +141,20 @@ export default function AdminOrders() {
                 currentDesignUrl = newLines.join('\n').trim();
             }
 
-            const res = await apiCall('uploadDesign', {
+            const payload = {
                 orderId: orderId,
                 fileName: file.name,
                 mimeType: file.type,
                 fileBase64: base64,
                 photoTitle: photoTitle,
                 existingDesignUrl: currentDesignUrl
-            }, (p) => setUploadProgress(p));
+            };
+            
+            if (watermarkedBase64) {
+               payload.previewBase64 = watermarkedBase64;
+            }
+
+            const res = await apiCall('uploadDesign', payload, (p) => setUploadProgress(p));
 
             if (res.success) {
                 setToastMessage(`Design successfully securely attached to ${orderId}`);
@@ -158,21 +211,26 @@ export default function AdminOrders() {
         const lines = designStr.split('\n').filter(l => l.trim() !== '');
         const designs = [];
         let currentTitle = "Design";
+        let currentOrig = null;
         
         for (const line of lines) {
             if (line.startsWith('---') && line.endsWith('---')) {
                 currentTitle = line.replace(/---/g, '').trim();
+                currentOrig = null;
+            } else if (line.startsWith('[ORIG]')) {
+                currentOrig = line.replace('[ORIG]', '').trim();
             } else if (line.startsWith('http')) {
-                designs.push({ title: currentTitle, url: line.trim() });
+                designs.push({ title: currentTitle, url: line.trim(), origUrl: currentOrig || line.trim() });
                 currentTitle = `Design ${designs.length + 1}`;
+                currentOrig = null;
             }
         }
         if (designs.length === 0) {
             lines.forEach((l, i) => {
-                if (l.startsWith('http')) designs.push({ title: `Design ${i + 1}`, url: l.trim() });
+                if (l.startsWith('http')) designs.push({ title: `Design ${i + 1}`, url: l.trim(), origUrl: l.trim() });
             });
         }
-        return designs.length > 0 ? designs : [{ title: 'Design', url: designStr }];
+        return designs.length > 0 ? designs : [{ title: 'Design', url: designStr, origUrl: designStr }];
     };
 
     const stats = {
@@ -225,7 +283,11 @@ export default function AdminOrders() {
                 </div>
             </div>
 
-            {pendingCount > 0 ? (
+            {loading ? (
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex flex-col items-center justify-center shadow-sm text-center">
+                    <p className="text-sm font-bold text-blue-700 animate-pulse">Loading order data...</p>
+                </div>
+            ) : pendingCount > 0 ? (
                 <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between shadow-[0_4px_12px_-5px_rgba(217,119,6,0.3)] hover:border-amber-300 transition-colors">
                    <div className="flex items-center space-x-4">
                         <div className="bg-amber-100/80 p-3 rounded-xl border border-amber-200">
@@ -484,17 +546,25 @@ export default function AdminOrders() {
                                                         </div>
                                                         <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider font-semibold">VIEW PREVIEW</span>
                                                     </a>
-                                                    <div className={`grid ${specificDesign ? 'grid-cols-3' : 'grid-cols-2'} divide-x divide-gray-200 border-b border-gray-100 bg-gray-50`}>
+                                                    <div className={`grid ${specificDesign ? (specificDesign.origUrl && specificDesign.origUrl !== specificDesign.url ? 'grid-cols-4' : 'grid-cols-3') : 'grid-cols-2'} divide-x divide-gray-200 border-b border-gray-100 bg-gray-50`}>
                                                         <a href={downloadUrl} className="p-2.5 hover:bg-blue-50 text-blue-600 hover:text-blue-800 text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center">
                                                             <Download size={14} className="mb-0.5" />
                                                             <span>DOWNLOAD</span>
                                                         </a>
                                                         
                                                         {specificDesign && (
-                                                            <a href={specificDesign.url} target="_blank" rel="noreferrer" className="p-2.5 hover:bg-purple-50 text-purple-600 hover:text-purple-800 text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center">
-                                                                <ExternalLink size={14} className="mb-0.5" />
-                                                                <span>VIEW</span>
-                                                            </a>
+                                                            <>
+                                                                <a href={specificDesign.url} target="_blank" rel="noreferrer" className="p-2.5 hover:bg-purple-50 text-purple-600 hover:text-purple-800 text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center">
+                                                                    <ExternalLink size={14} className="mb-0.5" />
+                                                                    <span>PREVIEW</span>
+                                                                </a>
+                                                                {specificDesign.origUrl && specificDesign.origUrl !== specificDesign.url && (
+                                                                    <a href={specificDesign.origUrl} target="_blank" rel="noreferrer" className="p-2.5 hover:bg-indigo-50 text-indigo-600 hover:text-indigo-800 text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center">
+                                                                        <ExternalLink size={14} className="mb-0.5" />
+                                                                        <span>ORIG</span>
+                                                                    </a>
+                                                                )}
+                                                            </>
                                                         )}
                                                         
                                                         {isThisPhotoUploading ? (

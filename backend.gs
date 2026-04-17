@@ -125,8 +125,8 @@ function handleCreateOrder(data, headers) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Orders');
     if (!sheet) return errorResponse('Orders sheet not found', headers);
     
-    // Generate unique order ID
-    const orderId = 'ORD-' + Math.floor(10000 + Math.random() * 90000);
+    // Use frontend-generated order ID if provided, otherwise generate a new one
+    const orderId = data.expectedOrderId || ('ORD-' + Math.floor(10000 + Math.random() * 90000));
     
     // Columns: [0]Order_ID, [1]Crafter_Ref, [2]Customer, [3]Address, [4]Template, [5]Transaction_ID, [6]Status, [7]Photo_URL, [8]Design_URL, [9]Date, [10]Delivery_Method, [11]Quantity, [12]Price, [13]Commission, [14]Payment_URL
     sheet.appendRow([
@@ -196,8 +196,8 @@ function handleGetOrders(params, headers) {
     }
     orders.push(order);
   }
-  
-  return successResponse({ orders }, headers);
+    orders.reverse();
+    return successResponse({ orders }, headers);
 }
 
 function handleUpdateOrderStatus(data) {
@@ -219,15 +219,25 @@ function handleUploadDesign(data, headers) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Orders');
     if (!sheet) return errorResponse('Orders sheet not found', headers);
     
-    // Upload file
-    const url = uploadFileToDrive(data.fileBase64, data.fileName, data.mimeType, 'TroGifts_CompletedDesigns');
+    let url;
+    let newUrlStr;
     
-    // Find order and update Col 8 (Index 8, Column I) and Status (Index 6, Column G)
+    if (data.previewBase64) {
+        // New dual-upload method
+        const origUrl = uploadFileToDrive(data.fileBase64, data.fileName, data.mimeType, 'TroGifts_CompletedDesigns');
+        url = uploadFileToDrive(data.previewBase64, "preview_" + data.fileName, data.mimeType, 'TroGifts_CompletedDesigns');
+        newUrlStr = data.photoTitle ? `--- ${data.photoTitle} ---\n[ORIG] ${origUrl}\n${url}` : `[ORIG] ${origUrl}\n${url}`;
+    } else {
+        // Legacy fallback
+        url = uploadFileToDrive(data.fileBase64, data.fileName, data.mimeType, 'TroGifts_CompletedDesigns');
+        newUrlStr = data.photoTitle ? `--- ${data.photoTitle} ---\n${url}` : url;
+    }
+    
+    // Find order and update Col 9 (Design URL) and Status (Col 7)
     const rows = sheet.getDataRange().getValues();
     for (let i = 1; i < rows.length; i++) {
         if (rows[i][0] === data.orderId) {
             let existing = data.existingDesignUrl || sheet.getRange(i + 1, 9).getValue() || "";
-            let newUrlStr = data.photoTitle ? `--- ${data.photoTitle} ---\n${url}` : url;
             let finalStr = existing && data.photoTitle ? existing + "\n" + newUrlStr : newUrlStr;
             
             sheet.getRange(i + 1, 9).setValue(finalStr);
@@ -341,21 +351,22 @@ function handleGetDashboardStats(params, headers) {
       // Global admin stats logic
       totalOrders++;
       totalEarningsNum += parseFloat(rows[i][12]) || 0; // Admin tracks Revenue
-      
-      if (rows[i][6] === 'Waiting for Approval') {
-        pendingApprovals++;
-      }
     }
   }
 
   let activeCrafters = 0;
+  pendingApprovals = 0; // Reset for crafter calculations
   if (!params.crafterId) {
     const userSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
     if (userSheet) {
        const uRows = userSheet.getDataRange().getValues();
        for(let j=1; j<uRows.length; j++) {
-           if (uRows[j][1] === 'crafter' && uRows[j][7] === 'Active') {
-               activeCrafters++;
+           if (uRows[j][1] === 'crafter') {
+               if (uRows[j][7] === 'Active') {
+                   activeCrafters++;
+               } else if (uRows[j][7] === 'Pending Validation') {
+                   pendingApprovals++;
+               }
            }
        }
     }
