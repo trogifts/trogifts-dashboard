@@ -19,7 +19,7 @@ export default function NewOrder() {
     const [frontendOrderId] = useState(() => 'ORD-' + Math.floor(10000 + Math.random() * 90000));
 
     const [items, setItems] = useState([
-        { customerName: '', template: 'Template A - Standard Classic', address: '', files: [] }
+        { customerName: '', template: 'Template A - Standard Classic', quality: 'High Quality', keychain: 'Without Keychain', keychainName: '', address: '', files: [] }
     ]);
 
     const [paymentFile, setPaymentFile] = useState(null);
@@ -72,7 +72,7 @@ export default function NewOrder() {
         let newItems = [...items];
         if (q > items.length) {
             for (let i = items.length; i < q; i++) {
-                newItems.push({ customerName: '', template: 'Template A - Standard Classic', address: '', files: [] });
+                newItems.push({ customerName: '', template: 'Template A - Standard Classic', quality: 'High Quality', keychain: 'Without Keychain', keychainName: '', address: '', files: [] });
             }
         } else if (q < items.length && q > 0) {
             newItems = newItems.slice(0, q);
@@ -286,7 +286,15 @@ export default function NewOrder() {
     const financials = () => {
         const q = parseInt(formData.quantity, 10) || 1;
 
-        let originalPrice = q * 249;
+        let originalPrice = 0;
+        items.slice(0, q).forEach((item) => {
+            if (item.quality === 'High Quality') {
+                originalPrice += (item.keychain === 'With Keychain' ? 239 : 229);
+            } else {
+                originalPrice += (item.keychain === 'With Keychain' ? 209 : 199);
+            }
+        });
+
         let price = originalPrice;
         let hasDiscount = false;
 
@@ -312,6 +320,9 @@ export default function NewOrder() {
         // Validation
         for (let i = 0; i < items.length; i++) {
             if (!items[i].customerName.trim()) return alert(`Item #${i + 1} is missing a Customer Name`);
+            if (items[i].keychain === 'With Keychain' && (!items[i].keychainName || !items[i].keychainName.trim())) {
+                return alert(`Item #${i + 1}: Please provide a short name for the keychain`);
+            }
             if (formData.deliveryMethod === 'Deliver to Customer' && !formData.sameAddress) {
                 if (!items[i].address || !items[i].address.trim()) return alert(`Item #${i + 1} is missing a Shipping Address!`);
             }
@@ -410,7 +421,7 @@ export default function NewOrder() {
 
             // Combine all names and templates
             const allNames = currentItems.map((i, index) => `Item ${index + 1}: ${i.customerName}`).join('\n');
-            const allTemplates = currentItems.map((i, index) => `Item ${index + 1}: ${i.template}`).join('\n');
+            const allTemplates = currentItems.map((i, index) => `Item ${index + 1}: ${i.template} | ${i.quality} | ${i.keychain}${i.keychain === 'With Keychain' ? ` (${i.keychainName})` : ''}`).join('\n');
             const allAddresses = currentItems.map((i, index) => `Item ${index + 1}:\n${i.address}`).join('\n\n--- \n');
 
             const isMultipleAddresses = formData.deliveryMethod === 'Deliver to Customer' && !formData.sameAddress;
@@ -557,6 +568,58 @@ export default function NewOrder() {
                                             <option>Template D - Minimalist</option>
                                             <option>Template E - Premium Gold</option>
                                         </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Material Quality</label>
+                                        <div className="space-y-2 mt-1">
+                                            <label className={`flex items-start p-3 border rounded-lg cursor-pointer transition-colors ${item.quality === 'High Quality' ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400' : 'hover:bg-gray-50'}`}>
+                                                <input type="radio" name={`quality-${index}`} checked={item.quality === 'High Quality'} onChange={() => updateItem(index, 'quality', 'High Quality')} className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" />
+                                                <div className="ml-3 flex flex-col">
+                                                    <span className="text-sm font-bold text-gray-900">High Quality PVC</span>
+                                                    <span className="text-xs text-gray-500 mt-0.5 leading-snug">Waterproof, highly durable PVC material. Noticeably stronger than standard options.</span>
+                                                </div>
+                                            </label>
+                                            <label className={`flex items-start p-3 border rounded-lg cursor-pointer transition-colors ${item.quality === 'Low Quality' ? 'bg-red-50 border-red-300 ring-1 ring-red-300' : 'hover:bg-gray-50'}`}>
+                                                <input type="radio" name={`quality-${index}`} checked={item.quality === 'Low Quality'} onChange={() => updateItem(index, 'quality', 'Low Quality')} className="mt-0.5 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300" />
+                                                <div className="ml-3 flex flex-col">
+                                                    <span className="text-sm font-bold text-gray-900">Standard Quality</span>
+                                                    <span className="text-xs text-gray-400 mt-0.5 leading-snug">Basic material. Not waterproof and less durable compared to the PVC variant.</span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex flex-col space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Hardware Add-on</label>
+                                            <div className="space-y-2 mt-1">
+                                                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${item.keychain === 'Without Keychain' ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400' : 'hover:bg-gray-50'}`}>
+                                                    <input type="radio" name={`keychain-${index}`} checked={item.keychain === 'Without Keychain'} onChange={() => updateItem(index, 'keychain', 'Without Keychain')} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" />
+                                                    <span className="ml-3 text-sm font-bold text-gray-900">Without Keychain Ring</span>
+                                                </label>
+                                                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${item.keychain === 'With Keychain' ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400' : 'hover:bg-gray-50'}`}>
+                                                    <input type="radio" name={`keychain-${index}`} checked={item.keychain === 'With Keychain'} onChange={() => updateItem(index, 'keychain', 'With Keychain')} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" />
+                                                    <span className="ml-3 text-sm font-bold text-gray-900">Include Keychain Ring</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        {item.keychain === 'With Keychain' && (
+                                            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg animate-in fade-in zoom-in duration-200">
+                                                <label className="block text-sm font-bold text-gray-800">Keychain Name</label>
+                                                <p className="text-[10px] text-gray-500 leading-tight mt-0.5 mb-2">Important: Keep the name short (max 10 letters). Very long names can easily break or quickly snap off.</p>
+                                                <input 
+                                                    type="text" 
+                                                    maxLength={10}
+                                                    value={item.keychainName || ''} 
+                                                    onChange={e => updateItem(index, 'keychainName', e.target.value)} 
+                                                    required 
+                                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border py-2 px-3" 
+                                                    placeholder="Short name (e.g. AMIT)" 
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

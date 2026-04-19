@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, UploadCloud, CheckCircle, XCircle, MessageCircle, Download, ExternalLink, Package } from 'lucide-react';
+import { Search, Filter, UploadCloud, CheckCircle, XCircle, MessageCircle, Download, ExternalLink, Package, User } from 'lucide-react';
 import { apiCall } from '../../api';
 
 export default function AdminOrders() {
@@ -497,100 +497,198 @@ export default function AdminOrders() {
             {inspectOrder && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                        <div className="p-5 border-b border-gray-100 flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-900">Order Breakdown: {inspectOrder.id}</h2>
-                            <button onClick={() => setInspectOrder(null)} className="text-gray-400 hover:text-gray-600"><XCircle size={24} /></button>
-                        </div>
-                        <div className="p-6 overflow-y-auto space-y-6">
-                            <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl">
-                                <h3 className="font-bold text-orange-800 text-xs uppercase tracking-wider mb-2">Manifest Details</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-orange-900 mb-3">
-                                    <div>
-                                        <span className="font-bold block mb-1">Customer Names:</span>
-                                        <span className="whitespace-pre-wrap block leading-relaxed">{inspectOrder.customerName}</span>
-                                    </div>
-                                    <div>
-                                        <span className="font-bold block mb-1">Chosen Templates:</span>
-                                        <span className="whitespace-pre-wrap block leading-relaxed">{inspectOrder.template}</span>
-                                    </div>
-                                </div>
-                                <div className="text-sm text-orange-900 border-t border-orange-200/60 pt-3">
-                                    <span className="font-bold block mb-1">Shipping Address Location(s):</span>
-                                    <span className="whitespace-pre-wrap block leading-relaxed">{inspectOrder.address || 'No address specified'}</span>
+                        <div className="p-5 border-b border-gray-100 flex justify-between items-start bg-gray-50/30">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900">Order Breakdown: {inspectOrder.id}</h2>
+                                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
+                                    <span className="flex items-center font-medium bg-gray-100 px-2 py-0.5 rounded-md"><User size={14} className="mr-1.5 text-gray-400" /> {inspectOrder.crafterId || 'Unknown Crafter'}</span>
+                                    {inspectOrder.crafterPhone && (
+                                        <a href={`https://wa.me/${String(inspectOrder.crafterPhone).replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hello, regarding TroGifts Order ' + inspectOrder.id)}`} target="_blank" rel="noreferrer" className="flex items-center text-green-600 hover:text-green-800 transition-colors font-semibold bg-green-50 px-2 py-0.5 rounded-md border border-green-100 hover:border-green-300">
+                                            <MessageCircle size={14} className="mr-1.5" /> {inspectOrder.crafterPhone}
+                                        </a>
+                                    )}
                                 </div>
                             </div>
-                            {parsePhotos(inspectOrder.photoUrl).map((group, idx) => (
-                                <div key={idx} className="space-y-3">
-                                    <h3 className="font-bold text-gray-800 bg-gray-50 p-2 rounded-lg border border-gray-200">{group.title}</h3>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                        {group.urls.map((url, uidx) => {
-                                            // Ensure we always grab the pure native URL stripping any preview queries if accidentally present
-                                            const rawUrl = url.split('?')[0];
-                                            const downloadUrl = `${rawUrl}?ik-attachment=true`;
+                            <button onClick={() => setInspectOrder(null)} className="text-gray-400 hover:text-gray-600 bg-white p-1 rounded-full shadow-sm border border-gray-200"><XCircle size={24} /></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto space-y-6">
+                            {(() => {
+                                const cNames = (inspectOrder.customerName || '').split('\n').filter(Boolean);
+                                const cTemplates = (inspectOrder.template || '').split('\n').filter(Boolean);
+                                const photoGroups = parsePhotos(inspectOrder.photoUrl);
+                                
+                                const itemsParsed = cNames.map((nLine, idx) => {
+                                    const name = nLine.replace(/^Item \d+: /, '');
+                                    const tLine = cTemplates[idx] || '';
+                                    const tArray = tLine.replace(/^Item \d+: /, '').split(' | ').filter(Boolean);
+                                    
+                                    // Find corresponding photos
+                                    let group = photoGroups.find(g => g.title.trim() === `Item ${idx + 1}: ${name.trim()}`);
+                                    if (!group && photoGroups[idx]) group = photoGroups[idx]; // fallback to index
+                                    
+                                    return { name, tArray, group };
+                                });
 
-                                            const photoTitleStr = group.title !== 'General' ? `${group.title.split('(')[0].trim()} Photo ${uidx + 1}` : `Photo ${uidx + 1} (Unsorted)`;
-                                            const isThisPhotoUploading = uploadingOrder === `${inspectOrder.id}-${photoTitleStr}`;
-                                            const parsedDesigns = parseDesigns(inspectOrder.designUrl);
-                                            let specificDesign = parsedDesigns.find(d => d.title === photoTitleStr);
+                                // Find any leftover photo groups that didn't cleanly map to an item
+                                const unattachedGroups = photoGroups.filter(g => !itemsParsed.some(i => i.group === g));
 
-                                            // Fallback for legacy designs that don't have header titles
-                                            if (!specificDesign && parsedDesigns.length > 0 && parsedDesigns[0].title === 'Design 1' && idx === 0 && uidx === 0) {
-                                                specificDesign = parsedDesigns[0];
-                                            }
-
-                                            return (
-                                                <div key={uidx} className="flex flex-col border border-gray-200 rounded-lg overflow-hidden hover:border-gray-400 transition-colors shadow-sm group">
-                                                    <a href={rawUrl} target="_blank" rel="noreferrer" className="block text-center p-3 bg-white border-b border-gray-100 flex-grow transition-colors hover:bg-gray-50 flex flex-col items-center justify-center">
-                                                        <div className="text-gray-800 font-bold text-sm">
-                                                            {photoTitleStr}
+                                return (
+                                    <div className="space-y-6">
+                                        <div className="space-y-4">
+                                            {itemsParsed.map((item, idx) => (
+                                                <div key={idx} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm flex flex-col hover:border-blue-300 transition-colors">
+                                                    
+                                                    {/* Header: Name and Badges */}
+                                                    <div className="bg-slate-50 border-b border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5"><Package size={12} className="inline mr-1 pb-0.5" />Item #{idx + 1}</span>
+                                                            <span className="font-bold text-gray-900 text-base">{item.name}</span>
                                                         </div>
-                                                        <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider font-semibold">VIEW PREVIEW</span>
-                                                    </a>
-                                                    <div className={`grid ${specificDesign ? (specificDesign.origUrl && specificDesign.origUrl !== specificDesign.url ? 'grid-cols-4' : 'grid-cols-3') : 'grid-cols-2'} divide-x divide-gray-200 border-b border-gray-100 bg-gray-50`}>
-                                                        <a href={downloadUrl} className="p-2.5 hover:bg-blue-50 text-blue-600 hover:text-blue-800 text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center">
-                                                            <Download size={14} className="mb-0.5" />
-                                                            <span>DOWNLOAD</span>
-                                                        </a>
-                                                        
-                                                        {specificDesign && (
-                                                            <>
-                                                                <a href={specificDesign.url} target="_blank" rel="noreferrer" className="p-2.5 hover:bg-purple-50 text-purple-600 hover:text-purple-800 text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center">
-                                                                    <ExternalLink size={14} className="mb-0.5" />
-                                                                    <span>PREVIEW</span>
-                                                                </a>
-                                                                {specificDesign.origUrl && specificDesign.origUrl !== specificDesign.url && (
-                                                                    <a href={specificDesign.origUrl} target="_blank" rel="noreferrer" className="p-2.5 hover:bg-indigo-50 text-indigo-600 hover:text-indigo-800 text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center">
-                                                                        <ExternalLink size={14} className="mb-0.5" />
-                                                                        <span>ORIG</span>
-                                                                    </a>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                        
-                                                        {isThisPhotoUploading ? (
-                                                            <div className="p-2.5 bg-gray-50 text-gray-500 text-[10px] font-bold flex flex-col items-center justify-center text-center w-full">
-                                                                <span className="mb-1">Upldg...</span>
-                                                                <div className="w-[80%] bg-gray-200 rounded-full h-1.5 opacity-80">
-                                                                    <div className="bg-blue-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
-                                                                </div>
+                                                        <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end">
+                                                            {item.tArray.map((badge, bi) => (
+                                                                <span key={bi} className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] px-2 py-1 rounded-md font-bold shadow-sm">
+                                                                    {badge.trim()}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Photos & Designs Grid */}
+                                                    <div className="p-4 bg-white">
+                                                        {item.group && item.group.urls && item.group.urls.length > 0 ? (
+                                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                                {item.group.urls.map((url, uidx) => {
+                                                                    const rawUrl = url.split('?')[0];
+                                                                    const downloadUrl = `${rawUrl}?ik-attachment=true`;
+
+                                                                    const photoTitleStr = item.group.title !== 'General' ? `${item.group.title.split('(')[0].trim()} Photo ${uidx + 1}` : `Photo ${uidx + 1} (Unsorted)`;
+                                                                    const isThisPhotoUploading = uploadingOrder === `${inspectOrder.id}-${photoTitleStr}`;
+                                                                    const parsedDesigns = parseDesigns(inspectOrder.designUrl);
+                                                                    let specificDesign = parsedDesigns.find(d => d.title === photoTitleStr);
+
+                                                                    if (!specificDesign && parsedDesigns.length > 0 && parsedDesigns[0].title === 'Design 1' && idx === 0 && uidx === 0) {
+                                                                        specificDesign = parsedDesigns[0];
+                                                                    }
+
+                                                                    return (
+                                                                        <div key={uidx} className="flex flex-col border border-gray-200 rounded-lg overflow-hidden hover:border-gray-400 transition-colors shadow-sm group">
+                                                                            <a href={rawUrl} target="_blank" rel="noreferrer" className="block text-center p-3 bg-white border-b border-gray-100 flex-grow transition-colors hover:bg-gray-50 flex flex-col items-center justify-center">
+                                                                                <div className="text-gray-800 font-bold text-sm">
+                                                                                    {photoTitleStr}
+                                                                                </div>
+                                                                                <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider font-semibold">VIEW PREVIEW</span>
+                                                                            </a>
+                                                                            <div className={`grid ${specificDesign ? (specificDesign.origUrl && specificDesign.origUrl !== specificDesign.url ? 'grid-cols-4' : 'grid-cols-3') : 'grid-cols-2'} divide-x divide-gray-200 border-b border-gray-100 bg-gray-50`}>
+                                                                                <a href={downloadUrl} className="p-2.5 hover:bg-blue-50 text-blue-600 hover:text-blue-800 text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center">
+                                                                                    <Download size={14} className="mb-0.5" />
+                                                                                    <span>DOWNLOAD</span>
+                                                                                </a>
+                                                                                
+                                                                                {specificDesign && (
+                                                                                    <>
+                                                                                        <a href={specificDesign.url} target="_blank" rel="noreferrer" className="p-2.5 hover:bg-purple-50 text-purple-600 hover:text-purple-800 text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center">
+                                                                                            <ExternalLink size={14} className="mb-0.5" />
+                                                                                            <span>PREVIEW</span>
+                                                                                        </a>
+                                                                                        {specificDesign.origUrl && specificDesign.origUrl !== specificDesign.url && (
+                                                                                            <a href={specificDesign.origUrl} target="_blank" rel="noreferrer" className="p-2.5 hover:bg-indigo-50 text-indigo-600 hover:text-indigo-800 text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center">
+                                                                                                <ExternalLink size={14} className="mb-0.5" />
+                                                                                                <span>ORIG</span>
+                                                                                            </a>
+                                                                                        )}
+                                                                                    </>
+                                                                                )}
+                                                                                
+                                                                                {isThisPhotoUploading ? (
+                                                                                    <div className="p-2.5 bg-gray-50 text-gray-500 text-[10px] font-bold flex flex-col items-center justify-center text-center w-full">
+                                                                                        <span className="mb-1">Upldg...</span>
+                                                                                        <div className="w-[80%] bg-gray-200 rounded-full h-1.5 opacity-80">
+                                                                                            <div className="bg-blue-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <label className={`p-2.5 hover:bg-green-50 ${specificDesign ? 'text-gray-600 hover:text-gray-800' : 'text-green-600 hover:text-green-800'} text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center cursor-pointer`}>
+                                                                                        <UploadCloud size={14} className="mb-0.5" />
+                                                                                        <span>{specificDesign ? 'REPLACE' : 'UPLOAD'}</span>
+                                                                                        <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => handleDesignUpload(e, inspectOrder.id, photoTitleStr)} />
+                                                                                    </label>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         ) : (
-                                                            <label className={`p-2.5 hover:bg-green-50 ${specificDesign ? 'text-gray-600 hover:text-gray-800' : 'text-green-600 hover:text-green-800'} text-[10px] font-bold transition-colors flex flex-col items-center justify-center text-center cursor-pointer`}>
-                                                                <UploadCloud size={14} className="mb-0.5" />
-                                                                <span>{specificDesign ? 'REPLACE' : 'UPLOAD'}</span>
-                                                                <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => handleDesignUpload(e, inspectOrder.id, photoTitleStr)} />
-                                                            </label>
+                                                            <div className="text-center py-4 bg-gray-50 rounded-lg text-gray-500 text-xs font-medium border border-dashed border-gray-200">
+                                                                No specific photos attached to this item.
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+                                            ))}
+                                            {itemsParsed.length === 0 && (
+                                                <div className="text-center py-6 bg-slate-50 border border-slate-200 rounded-xl text-gray-500 text-sm font-medium">
+                                                    No parsed customization items found.
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Legacy / Unattached Photos */}
+                                        {unattachedGroups.length > 0 && (
+                                            <div className="space-y-4">
+                                                <h3 className="font-bold text-slate-800 text-xs uppercase tracking-widest pl-1 mt-6">Extra Files</h3>
+                                                {unattachedGroups.map((group, idx) => (
+                                                    <div key={idx} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm flex flex-col hover:border-gray-400 transition-colors">
+                                                        <div className="bg-gray-100 border-b border-gray-200 p-3 flex">
+                                                            <span className="font-bold text-gray-900 text-sm">{group.title}</span>
+                                                        </div>
+                                                        <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 bg-white">
+                                                            {group.urls.map((url, uidx) => {
+                                                                const rawUrl = url.split('?')[0];
+                                                                const downloadUrl = `${rawUrl}?ik-attachment=true`;
+                                                                const photoTitleStr = group.title !== 'General' ? `${group.title.split('(')[0].trim()} Photo ${uidx + 1}` : `Photo ${uidx + 1} (Unsorted)`;
+                                                                const isThisPhotoUploading = uploadingOrder === `${inspectOrder.id}-${photoTitleStr}`;
+                                                                const parsedDesigns = parseDesigns(inspectOrder.designUrl);
+                                                                let specificDesign = parsedDesigns.find(d => d.title === photoTitleStr);
+
+                                                                return (
+                                                                    <div key={uidx} className="flex flex-col border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:border-gray-400 transition-colors">
+                                                                        <a href={rawUrl} target="_blank" rel="noreferrer" className="block text-center p-3 bg-white border-b border-gray-100 flex-grow hover:bg-gray-50 flex flex-col items-center justify-center">
+                                                                            <span className="text-gray-800 font-bold text-xs">{photoTitleStr}</span>
+                                                                            <span className="text-[9px] text-gray-400 mt-1 uppercase tracking-wider font-semibold">VIEW PREVIEW</span>
+                                                                        </a>
+                                                                        <div className="grid xl:grid-cols-2 grid-cols-1 divide-y xl:divide-y-0 xl:divide-x divide-gray-200 border-b border-gray-100 bg-gray-50">
+                                                                            <a href={downloadUrl} className="p-2 hover:bg-blue-50 text-blue-600 text-[10px] font-bold transition-colors flex items-center justify-center">
+                                                                                <Download size={14} className="mr-1" /> D/L
+                                                                            </a>
+                                                                            {isThisPhotoUploading ? (
+                                                                                 <div className="p-2 text-gray-500 text-[10px] font-bold flex items-center justify-center">Upldg...</div>
+                                                                            ) : (
+                                                                                <label className="p-2 hover:bg-green-50 text-green-600 text-[10px] font-bold transition-colors flex items-center justify-center cursor-pointer">
+                                                                                    <UploadCloud size={14} className="mr-1" /> UPLOAD
+                                                                                    <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => handleDesignUpload(e, inspectOrder.id, photoTitleStr)} />
+                                                                                </label>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Shipping Directives Footer */}
+                                        <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm mt-4">
+                                            <div className="text-sm text-gray-700 p-4">
+                                                <span className="font-bold block mb-2 text-slate-800 uppercase tracking-widest text-[10px]">Shipping Directives</span>
+                                                <span className="whitespace-pre-wrap block leading-relaxed text-gray-600 bg-white p-3 rounded-lg border border-slate-200 shadow-sm text-xs font-medium mt-1">{inspectOrder.address || 'No specific address instructions provided.'}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                            {parsePhotos(inspectOrder.photoUrl).length === 0 && (
-                                <p className="text-gray-500 text-center py-8">No specific photos found.</p>
-                            )}
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
