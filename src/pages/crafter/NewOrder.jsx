@@ -710,6 +710,9 @@ export default function NewOrder() {
                                     <p>Paying To: <span className="font-bold text-gray-800 tracking-wide">{upiId}</span></p>
                                     <p>Order Ref: <span className="font-bold text-gray-800 tracking-wide">{frontendOrderId}</span></p>
                                 </div>
+                                <div className="text-[10px] text-red-600 font-bold bg-red-50 p-2 rounded-lg border border-red-100 mt-3 text-left leading-tight">
+                                    Notice: The uploaded payment screenshot MUST clearly show the Payment Transaction ID (UTR).
+                                </div>
                             </div>
                         </div>
 
@@ -720,12 +723,8 @@ export default function NewOrder() {
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Payment Transaction ID</label>
-                                <input type="text" value={formData.transactionId} onChange={e => setFormData({ ...formData, transactionId: e.target.value })} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border py-2 px-3" placeholder="e.g TXN-..." />
-                            </div>
-                            <div>
+                        <div className="flex flex-col">
+                            <div className="w-full">
                                 <label className="block text-sm font-medium text-gray-700">Payment Screenshot</label>
                                 <input type="file" onChange={handlePaymentSelect} accept="image/*" required className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-300 rounded-md p-1" />
                                 {paymentFile && paymentFile.status === 'uploading' && (

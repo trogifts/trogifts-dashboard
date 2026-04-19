@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Search, Filter, UploadCloud, CheckCircle, XCircle, MessageCircle, Download, ExternalLink, Package, User } from 'lucide-react';
 import { apiCall } from '../../api';
 
@@ -11,6 +12,14 @@ export default function AdminOrders() {
     const [uploadingOrder, setUploadingOrder] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [searchQuery, setSearchQuery] = useState('');
+    const location = useLocation();
+
+    useEffect(() => {
+        if (location.state && location.state.search) {
+            setSearchQuery(location.state.search);
+        }
+    }, [location]);
 
     const statuses = ['All', 'Order Placed', 'Payment Verify', 'Waiting for Approval', 'Changes Requested', 'Approved', 'Printed', 'Shipped', 'Delivered'];
 
@@ -29,12 +38,22 @@ export default function AdminOrders() {
         }
     }
 
-    const filteredOrders = statusFilter === 'All'
+    let resultOrders = statusFilter === 'All'
         ? orders
         : orders.filter(o => {
-            if (statusFilter === 'Changes Requested') return o.status.startsWith('Changes Requested');
+            if (statusFilter === 'Changes Requested') return o.status?.startsWith('Changes Requested');
             return o.status === statusFilter;
         });
+
+    if (searchQuery.trim()) {
+        const lowerQ = searchQuery.toLowerCase();
+        resultOrders = resultOrders.filter(o => 
+            (o.id && o.id.toString().toLowerCase().includes(lowerQ)) ||
+            (o.crafterId && o.crafterId.toString().toLowerCase().includes(lowerQ)) ||
+            (o.customerName && o.customerName.toString().toLowerCase().includes(lowerQ))
+        );
+    }
+    const filteredOrders = resultOrders;
 
     const updateStatus = async (id, newStatus) => {
         setActionLoading(true);
@@ -321,6 +340,8 @@ export default function AdminOrders() {
                     <input
                         type="text"
                         placeholder="Search orders..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                 </div>

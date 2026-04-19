@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, UserCheck, ShieldAlert, XCircle, Loader2, Package, HandCoins, Hourglass, CheckCircle2 } from 'lucide-react';
 import { apiCall } from '../../api';
 
@@ -11,6 +12,7 @@ export default function AdminCrafters() {
     const [loadingStats, setLoadingStats] = useState(false);
     const [isMarkingPaid, setIsMarkingPaid] = useState(false);
     const [payoutAmount, setPayoutAmount] = useState('');
+    const navigate = useNavigate();
 
     useEffect(() => {
         async function loadCrafters() {
@@ -200,12 +202,26 @@ export default function AdminCrafters() {
                             )}
 
                             {crafterStats && (
-                                <div className="mt-6 border-t border-gray-100 pt-5 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
-                                    <div className="w-full sm:w-auto">
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Record Manual Payout</label>
-                                        <p className="text-xs text-gray-500 mb-2">Type exactly how much you paid them today.</p>
-                                        <div className="flex items-center space-x-2">
-                                            <span className="text-gray-500 font-bold">₹</span>
+                                <div className="mt-6 border-t border-gray-100 pt-5 flex flex-col space-y-4">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-blue-50/50 p-4 rounded-xl border border-blue-100 gap-3">
+                                        <div>
+                                            <h4 className="font-bold text-blue-900 text-sm">Full Order Ledger</h4>
+                                            <p className="text-xs text-blue-700">View all individual orders placed by this specific crafter.</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => navigate('/admin/orders', { state: { search: selectedCrafter.email } })}
+                                            className="px-4 py-2 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700 shadow-[0_4px_10px_-3px_rgba(37,99,235,0.3)] transition-colors w-full sm:w-auto text-center"
+                                        >
+                                            View Order List
+                                        </button>
+                                    </div>
+
+                                    <div className="border-t border-gray-100 pt-4 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+                                        <div className="w-full sm:w-auto">
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Record Manual Payout</label>
+                                            <p className="text-xs text-gray-500 mb-2">Type exactly how much you paid them today.</p>
+                                            <div className="flex items-center space-x-2">
+                                                <span className="text-gray-500 font-bold">₹</span>
                                             <input
                                                 type="number"
                                                 placeholder="Amount"
@@ -223,6 +239,7 @@ export default function AdminCrafters() {
                                         {isMarkingPaid && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
                                         {isMarkingPaid ? 'Saving Ledger...' : 'Save Typed Payout'}
                                     </button>
+                                </div>
                                 </div>
                             )}
                         </div>
