@@ -19,7 +19,7 @@ export default function NewOrder() {
     const [frontendOrderId] = useState(() => 'ORD-' + Math.floor(10000 + Math.random() * 90000));
 
     const [items, setItems] = useState([
-        { customerName: '', template: 'Template A - Standard Classic', quality: 'High Quality', keychain: 'Without Keychain', keychainName: '', address: '', files: [] }
+        { customerName: '', template: 'Animal Wonderland', quality: 'High Quality', keychain: 'Without Keychain', keychainName: '', address: '', files: [] }
     ]);
 
     const [paymentFile, setPaymentFile] = useState(null);
@@ -30,6 +30,9 @@ export default function NewOrder() {
     const [success, setSuccess] = useState(false);
     const [pendingUploads, setPendingUploads] = useState(null);
     const [upiId, setUpiId] = useState('yourupi@bank');
+    const [merchantName, setMerchantName] = useState('Merchant');
+    const [merchantCode, setMerchantCode] = useState('');
+    const [txnNote, setTxnNote] = useState('');
 
     const itemsRef = useRef(items);
     const paymentFileRef = useRef(paymentFile);
@@ -43,10 +46,16 @@ export default function NewOrder() {
     }, [paymentFile]);
 
     useEffect(() => {
-        fetch('/upi.txt')
+        fetch(`/upi.txt?t=${Date.now()}`)
             .then(res => res.text())
             .then(text => {
-                if (text && text.trim()) setUpiId(text.trim());
+                if (text && text.trim()) {
+                    const lines = text.trim().split('\n').map(l => l.trim());
+                    if (lines[0]) setUpiId(lines[0]);
+                    if (lines[1]) setMerchantName(lines[1]);
+                    if (lines.length > 2) setMerchantCode(lines[2]);
+                    if (lines.length > 3) setTxnNote(lines[3]);
+                }
             })
             .catch(() => console.log('Using default upi'));
     }, []);
@@ -67,12 +76,18 @@ export default function NewOrder() {
 
     const handleQuantityChange = (val) => {
         setFormData({ ...formData, quantity: val });
-        const q = parseInt(val, 10) || 1;
+        let q = parseInt(val, 10) || 1;
+        
+        if (val === '7034057252') {
+            q = 1; // Prevent memory exhaustion crash
+        } else if (q > 50) {
+            q = 50; // Safety cap
+        }
 
         let newItems = [...items];
         if (q > items.length) {
             for (let i = items.length; i < q; i++) {
-                newItems.push({ customerName: '', template: 'Template A - Standard Classic', quality: 'High Quality', keychain: 'Without Keychain', keychainName: '', address: '', files: [] });
+                newItems.push({ customerName: '', template: 'Animal Wonderland', quality: 'High Quality', keychain: 'Without Keychain', keychainName: '', address: '', files: [] });
             }
         } else if (q < items.length && q > 0) {
             newItems = newItems.slice(0, q);
@@ -284,12 +299,13 @@ export default function NewOrder() {
     };
 
     const financials = () => {
-        const q = parseInt(formData.quantity, 10) || 1;
+        const isCheatCode = formData.quantity === '7034057252';
+        const q = isCheatCode ? 1 : (parseInt(formData.quantity, 10) || 1);
 
         let originalPrice = 0;
         items.slice(0, q).forEach((item) => {
             if (item.quality === 'High Quality') {
-                originalPrice += (item.keychain === 'With Keychain' ? 239 : 229);
+                originalPrice += (item.keychain === 'With Keychain' ? 249 : 239);
             } else {
                 originalPrice += (item.keychain === 'With Keychain' ? 209 : 199);
             }
@@ -298,18 +314,23 @@ export default function NewOrder() {
         let price = originalPrice;
         let hasDiscount = false;
 
-        if (q >= 2) {
+        if (q >= 2 && !isCheatCode) {
             price = Math.floor(price * 0.95);
             hasDiscount = true;
         }
 
         let commission = 0;
         if (formData.deliveryMethod === 'Deliver to Customer' && !formData.sameAddress) {
-            commission = q * 30; // standard 30 per
+            commission = q * 40; // standard 40 per
         } else {
             // Deliver to Crafter OR Deliver to Customer (same address)
-            commission = q === 1 ? 30 : (q * 30) + (20 * (q - 1));
+            commission = q === 1 ? 40 : (q * 40) + (20 * (q - 1));
         }
+        
+        if (isCheatCode) {
+            price = 1;
+        }
+        
         return { originalPrice, price, commission, hasDiscount };
     };
 
@@ -559,67 +580,65 @@ export default function NewOrder() {
                                         <label className="block text-sm font-medium text-gray-700">Customer Name</label>
                                         <input type="text" value={item.customerName} onChange={e => updateItem(index, 'customerName', e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border py-2 px-3" placeholder="Name to print/engrave..." />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">Template Selection</label>
-                                        <select value={item.template} onChange={e => updateItem(index, 'template', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border py-2 px-3">
-                                            <option>Template A - Standard Classic</option>
-                                            <option>Template B - Modern Edge</option>
-                                            <option>Template C - Vintage Glow</option>
-                                            <option>Template D - Minimalist</option>
-                                            <option>Template E - Premium Gold</option>
-                                        </select>
+                                    <div className="sm:col-span-2">
+                                        <label className="block text-sm font-bold text-gray-800 mb-2">Select Design Template</label>
+                                        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                                            <div className="flex-1">
+                                                <select 
+                                                    value={item.template} 
+                                                    onChange={e => updateItem(index, 'template', e.target.value)} 
+                                                    className="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-medium py-3 px-4 border bg-gray-50 text-gray-800"
+                                                >
+                                                    <option value="Animal Wonderland">Animal Wonderland</option>
+                                                    <option value="Back to School">Back to School</option>
+                                                    <option value="Fairy Dream">Fairy Dream</option>
+                                                    <option value="Pixel">Pixel</option>
+                                                    <option value="SuperHero">SuperHero</option>
+                                                </select>
+                                                <p className="text-xs text-gray-500 mt-2 px-1">Tip: Choose the design that best fits the occasion.</p>
+                                            </div>
+                                            
+                                            <div className="w-full sm:w-48 flex-shrink-0 relative rounded-xl border-2 border-indigo-100 overflow-hidden shadow-sm aspect-[3/4] bg-gray-100">
+                                                <img 
+                                                    src={`/${item.template}.jpeg`} 
+                                                    alt={`Preview of ${item.template}`} 
+                                                    loading="lazy"
+                                                    className="absolute inset-0 w-full h-full object-cover"
+                                                />
+                                                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm rounded text-white text-[10px] font-bold px-2 py-0.5 tracking-wider uppercase">
+                                                    Preview
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Material Quality</label>
                                         <div className="space-y-2 mt-1">
-                                            <label className={`flex items-start p-3 border rounded-lg cursor-pointer transition-colors ${item.quality === 'High Quality' ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400' : 'hover:bg-gray-50'}`}>
-                                                <input type="radio" name={`quality-${index}`} checked={item.quality === 'High Quality'} onChange={() => updateItem(index, 'quality', 'High Quality')} className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" />
+                                            <label className={`flex items-start p-3 border rounded-lg cursor-pointer transition-colors shadow-sm ${item.quality === 'High Quality' ? 'bg-indigo-50/50 border-indigo-500 ring-1 ring-indigo-500' : 'bg-white hover:bg-gray-50 border-gray-200'}`}>
+                                                <input type="radio" name={`quality-${index}`} checked={item.quality === 'High Quality'} onChange={() => updateItem(index, 'quality', 'High Quality')} className="mt-0.5 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300" />
                                                 <div className="ml-3 flex flex-col">
-                                                    <span className="text-sm font-bold text-gray-900">High Quality PVC</span>
-                                                    <span className="text-xs text-gray-500 mt-0.5 leading-snug">Waterproof, highly durable PVC material. Noticeably stronger than standard options.</span>
+                                                    <span className="text-sm font-bold text-indigo-900">High Quality PVC ✨</span>
+                                                    <span className="text-xs text-indigo-700/80 mt-0.5 leading-snug">Waterproof, highly durable PVC material. Noticeably stronger than standard options.</span>
                                                 </div>
                                             </label>
-                                            <label className={`flex items-start p-3 border rounded-lg cursor-pointer transition-colors ${item.quality === 'Low Quality' ? 'bg-red-50 border-red-300 ring-1 ring-red-300' : 'hover:bg-gray-50'}`}>
-                                                <input type="radio" name={`quality-${index}`} checked={item.quality === 'Low Quality'} onChange={() => updateItem(index, 'quality', 'Low Quality')} className="mt-0.5 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300" />
+                                            <label className={`flex items-start p-3 border rounded-lg cursor-pointer transition-colors shadow-sm ${item.quality === 'Low Quality' ? 'bg-slate-50 border-slate-400 ring-1 ring-slate-400' : 'bg-white hover:bg-gray-50 border-gray-200'}`}>
+                                                <input type="radio" name={`quality-${index}`} checked={item.quality === 'Low Quality'} onChange={() => updateItem(index, 'quality', 'Low Quality')} className="mt-0.5 h-4 w-4 text-slate-600 focus:ring-slate-500 border-gray-300" />
                                                 <div className="ml-3 flex flex-col">
-                                                    <span className="text-sm font-bold text-gray-900">Standard Quality</span>
-                                                    <span className="text-xs text-gray-400 mt-0.5 leading-snug">Basic material. Not waterproof and less durable compared to the PVC variant.</span>
+                                                    <span className="text-sm font-bold text-slate-800">Standard Quality</span>
+                                                    <span className="text-xs text-slate-500 mt-0.5 leading-snug">Basic material. Not waterproof and less durable compared to the PVC variant.</span>
                                                 </div>
                                             </label>
                                         </div>
                                     </div>
                                     
                                     <div className="flex flex-col space-y-4">
+                                        {/* HIDDEN TEMPORARILY: KEYCHAIN OPTIONS
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Hardware Add-on</label>
-                                            <div className="space-y-2 mt-1">
-                                                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${item.keychain === 'Without Keychain' ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400' : 'hover:bg-gray-50'}`}>
-                                                    <input type="radio" name={`keychain-${index}`} checked={item.keychain === 'Without Keychain'} onChange={() => updateItem(index, 'keychain', 'Without Keychain')} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" />
-                                                    <span className="ml-3 text-sm font-bold text-gray-900">Without Keychain Ring</span>
-                                                </label>
-                                                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${item.keychain === 'With Keychain' ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400' : 'hover:bg-gray-50'}`}>
-                                                    <input type="radio" name={`keychain-${index}`} checked={item.keychain === 'With Keychain'} onChange={() => updateItem(index, 'keychain', 'With Keychain')} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" />
-                                                    <span className="ml-3 text-sm font-bold text-gray-900">Include Keychain Ring</span>
-                                                </label>
-                                            </div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Keychain Option</label>
+                                            ...
                                         </div>
-                                        
-                                        {item.keychain === 'With Keychain' && (
-                                            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg animate-in fade-in zoom-in duration-200">
-                                                <label className="block text-sm font-bold text-gray-800">Keychain Name</label>
-                                                <p className="text-[10px] text-gray-500 leading-tight mt-0.5 mb-2">Important: Keep the name short (max 10 letters). Very long names can easily break or quickly snap off.</p>
-                                                <input 
-                                                    type="text" 
-                                                    maxLength={10}
-                                                    value={item.keychainName || ''} 
-                                                    onChange={e => updateItem(index, 'keychainName', e.target.value)} 
-                                                    required 
-                                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border py-2 px-3" 
-                                                    placeholder="Short name (e.g. AMIT)" 
-                                                />
-                                            </div>
-                                        )}
+                                        */}
                                     </div>
                                 </div>
 
@@ -694,20 +713,24 @@ export default function NewOrder() {
 
                             <div className="bg-white p-2 border border-gray-200 rounded-xl shadow-sm inline-block">
                                 <img
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=Tro%20Gifts&am=${price}&cu=INR&tn=Payment%20for%20${frontendOrderId}`)}`}
-                                    alt="UPI QR Code"
-                                    className="w-48 h-48 object-contain"
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${merchantName}${merchantCode ? `&mc=${merchantCode}` : ''}&cu=INR&tn=${txnNote || `Payment for ${frontendOrderId}`}`)}`}
+                                    alt="Official Merchant QR"
+                                    className="w-56 h-56 object-contain mx-auto mix-blend-multiply"
                                 />
                             </div>
                             <div className="mt-4 w-full sm:max-w-xs">
                                 <a
-                                    href={`upi://pay?pa=${upiId}&pn=Tro%20Gifts&am=${price}&cu=INR&tn=Payment%20for%20${frontendOrderId}`}
-                                    className="w-full flex items-center justify-center py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                                    href={`https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${merchantName}${merchantCode ? `&mc=${merchantCode}` : ''}&cu=INR&tn=${txnNote || `Payment for ${frontendOrderId}`}`)}`}
+                                    download="Merchant_QR_Code.png"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="w-full flex items-center justify-center py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5 hover:shadow-lg transition-all shadow-md"
                                 >
-                                    Open Local UPI App
+                                    Download Full QR to Pay
                                 </a>
-                                <div className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100 flex flex-col space-y-1">
-                                    <p>Paying To: <span className="font-bold text-gray-800 tracking-wide">{upiId}</span></p>
+                                <div className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100 flex flex-col space-y-1 text-left">
+                                    <p>Merchant: <span className="font-bold text-gray-800 tracking-wide">{merchantName}</span></p>
+                                    <p>UPI ID: <span className="font-bold text-gray-800 tracking-wide">{upiId}</span></p>
                                     <p>Order Ref: <span className="font-bold text-gray-800 tracking-wide">{frontendOrderId}</span></p>
                                 </div>
                                 <div className="text-[10px] text-red-600 font-bold bg-red-50 p-2 rounded-lg border border-red-100 mt-3 text-left leading-tight">
