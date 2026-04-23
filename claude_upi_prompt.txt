@@ -1,0 +1,40 @@
+You are an expert in Android Web Intents, Google Pay/PhonePe integration, and Indian NPCI/UPI compliance rules. I need you to diagnose a persistent "Bank Limit Exceeded / Security Block" issue I am facing when generating UPI deep links from my React (Vite) web application.
+
+### The Objective
+I am building a web dashboard for crafters. When they checkout, they click a button that opens a native UPI app (GPay/PhonePe) via a web intent, auto-filling the Merchant Name, UPI ID, and exact Amount (e.g., ₹299.00).
+
+### The Current Implementation
+I dynamically fetch a base string from a `/upi.txt` file (currently: `upi://pay?pa=nihalmavungal0@oksbi&pn=Tro Gifts&cu=INR`).
+In React, I am constructing the deep link and QR code like this:
+
+```javascript
+// NewOrder.jsx snippet
+<a
+    href={encodeURI(`${upiBaseUrl}&am=${Number(price).toFixed(2)}`)}
+    className="..."
+>
+    Open UPI App to Pay
+</a>
+```
+
+### The Exact Problem & Symptoms
+The deep link DOES successfully open Google Pay and PhonePe. It accurately auto-fills the name ("Tro Gifts") and the exact amount ("₹299.00").
+
+However, when I attempt to complete the payment:
+1. **Google Pay Error:** Immediately throws the error: *"You exceeded the bank limit for this payment, retry with smaller amount."* (Even on small test amounts like 299, well within my actual SBI bank limits).
+2. **PhonePe "Gallery Scan" Error:** If I download the QR code image and scan it from the PhonePe gallery, it throws: *"You can pay up to ₹2000 rupees with QR code via gallery... for more pay with mobile number or scan any QR code."*
+3. **The Weird Exception:** I tested the *exact same deep link intent* using a different linked bank account on my phone, and it processed perfectly without limits!
+
+### What We Have Already Tried (And Failed)
+1. Tried using a strict Merchant Account (BharatPe) — It completely declined the `am=` auto-fill parameter because it was a static QR node.
+2. Switched from BharatPe to Personal UPI IDs (`@airtel` and `@oksbi`) — The `am=` parameter finally populates, but hits the phantom "exceeded bank limit" wall.
+3. Added strict decimal formatting (`.toFixed(2)`) so `am=299` becomes `am=299.00` to prevent parsers from multiplying the value. (Error persists).
+4. Ensured no unescaped spaces exist by using `encodeURI(...)`. (Resolved intent-swallowing, but limits persist).
+5. Attempted to spoof the GPay native App Action ID (`&aid=uGICAgMCC7ZCUJw`) to trick the trusted intent parser. (GPay blocked it as a replay/duplicate session).
+
+### The Goal
+I need to know:
+1. Is there a specific parameter, intent syntax (e.g. using `intent://` vs `upi://`), or Transaction Reference (`&tr=`) requirement we are missing that elevates a web deep link to a "Trusted" status to bypass NPCI remote web-payment velocity limits?
+2. Why is GPay reporting "Bank Limit Exceeded" specifically for web-triggered intents despite the actual account limits being much higher?
+3. What is the absolute bulletproof web-to-app URI payload structure that guarantees an unrestricted P2P/P2M transaction on Android?
+   v 
