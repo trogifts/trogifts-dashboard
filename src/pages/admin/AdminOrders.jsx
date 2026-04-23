@@ -72,6 +72,45 @@ export default function AdminOrders() {
         }
     };
 
+    const handleExportCSV = () => {
+        if (filteredOrders.length === 0) {
+            setToastMessage("No orders to export!");
+            setTimeout(() => setToastMessage(null), 3000);
+            return;
+        }
+        
+        const headers = ['Order ID', 'Date', 'Time/Ref', 'Crafter ID', 'Customer Name', 'Quantity', 'Payout (Rs)', 'Delivery Method', 'Status', 'Detailed Items'];
+        
+        const rows = filteredOrders.map(o => {
+            const timeRef = o.id && String(o.id).includes('-') ? String(o.id).split('-')[1] : '';
+            const itemsStr = (o.items || []).map((i, idx) => 
+                `[${idx+1}] Name: ${i.customerName} | Theme: ${i.template} | Quality: ${i.quality} ${i.keychain === 'With Keychain' ? `| Chain: ${i.keychainName}` : ''}`
+            ).join(' || ').replace(/"/g, '""');
+
+            return [
+                `"${o.id || ''}"`,
+                `"${o.date || ''}"`,
+                `="${timeRef}"`,
+                `"${o.crafterId || ''}"`,
+                `"${(o.customerName || '').replace(/"/g, '""')}"`,
+                `"${o.quantity || 1}"`,
+                `"${o.price || 0}"`,
+                `"${o.deliveryMethod || ''}"`,
+                `"${o.status || ''}"`,
+                `"${itemsStr}"`
+            ].join(',');
+        });
+
+        const csvString = headers.join(',') + '\n' + rows.join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `Trogifts_Orders_Export_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const fileToBase64 = (file) => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -355,6 +394,14 @@ export default function AdminOrders() {
                     >
                         {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
+                    
+                    <button
+                        onClick={handleExportCSV}
+                        className="ml-2 flex flex-shrink-0 items-center justify-center space-x-1 py-2 px-3 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm"
+                    >
+                        <Download size={16} />
+                        <span className="hidden sm:inline">Export Excel</span>
+                    </button>
                 </div>
             </div>
 
