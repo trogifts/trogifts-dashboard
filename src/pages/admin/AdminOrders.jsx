@@ -79,10 +79,23 @@ export default function AdminOrders() {
             return;
         }
         
-        const headers = ['Order ID', 'Date', 'Time/Ref', 'Crafter ID', 'Customer Name', 'Quantity', 'Payout (Rs)', 'Delivery Method', 'Status', 'Detailed Items'];
+        const headers = ['Order ID', 'Date', 'Time', 'Crafter ID', 'Customer Name', 'Quantity', 'Payout (Rs)', 'Delivery Method', 'Status', 'Detailed Items'];
         
         const rows = filteredOrders.map(o => {
-            const timeRef = o.id && String(o.id).includes('-') ? String(o.id).split('-')[1] : '';
+            let actualTime = 'N/A';
+            if (o.timestamp) {
+                // If timestamp is firebase object {_seconds, _nanoseconds}
+                if (typeof o.timestamp === 'object' && o.timestamp._seconds) {
+                    actualTime = new Date(o.timestamp._seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } else if (typeof o.timestamp === 'number') {
+                    actualTime = new Date(o.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } else if (typeof o.timestamp === 'string') {
+                    actualTime = new Date(o.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+            } else if (o.createdAt) {
+                actualTime = new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
             const itemsStr = (o.items || []).map((i, idx) => 
                 `[${idx+1}] Name: ${i.customerName} | Theme: ${i.template} | Quality: ${i.quality} ${i.keychain === 'With Keychain' ? `| Chain: ${i.keychainName}` : ''}`
             ).join(' || ').replace(/"/g, '""');
@@ -90,7 +103,7 @@ export default function AdminOrders() {
             return [
                 `"${o.id || ''}"`,
                 `"${o.date || ''}"`,
-                `="${timeRef}"`,
+                `"${actualTime}"`,
                 `"${o.crafterId || ''}"`,
                 `"${(o.customerName || '').replace(/"/g, '""')}"`,
                 `"${o.quantity || 1}"`,
