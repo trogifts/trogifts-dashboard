@@ -29,7 +29,6 @@ export default function NewOrder() {
     const [uploadStatusMsg, setUploadStatusMsg] = useState('Verifying active uploads...');
     const [success, setSuccess] = useState(false);
     const [pendingUploads, setPendingUploads] = useState(null);
-    const [isDownloadingQR, setIsDownloadingQR] = useState(false);
     const [upiId, setUpiId] = useState('yourupi@bank');
     const [merchantName, setMerchantName] = useState('Merchant');
     const [merchantCode, setMerchantCode] = useState('');
@@ -138,30 +137,6 @@ export default function NewOrder() {
                 xhr.send(formData);
             } catch (e) { reject(e); }
         });
-    };
-
-    const handleDownloadQR = async (e) => {
-        e.preventDefault();
-        setIsDownloadingQR(true);
-        try {
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${merchantName}${merchantCode ? `&mc=${merchantCode}` : ''}&cu=INR&tn=${txnNote || `Payment for ${frontendOrderId}`}`)}`;
-            const response = await fetch(qrUrl);
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            
-            const link = document.createElement('a');
-            link.href = blobUrl;
-            link.download = `TroGifts_QR_${frontendOrderId}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(blobUrl);
-        } catch (error) {
-            console.error('Failed to copy QR code', error);
-            alert('Your browser is blocking the direct download. Please take a screenshot of the QR code instead!');
-        } finally {
-            setIsDownloadingQR(false);
-        }
     };
 
     const compressPaymentScreenshot = (file) => {
@@ -742,20 +717,19 @@ export default function NewOrder() {
 
                             <div className="bg-white p-2 border border-gray-200 rounded-xl shadow-sm inline-block">
                                 <img
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${merchantName}${merchantCode ? `&mc=${merchantCode}` : ''}&cu=INR&tn=${txnNote || `Payment for ${frontendOrderId}`}`)}`}
+                                    src="/qr.jpeg"
                                     alt="Official Merchant QR"
-                                    className="w-56 h-56 object-contain mx-auto mix-blend-multiply"
+                                    className="w-56 h-56 object-cover mx-auto mix-blend-multiply"
                                 />
                             </div>
                             <div className="mt-4 w-full sm:max-w-xs">
-                                <button
-                                    type="button"
-                                    onClick={handleDownloadQR}
-                                    disabled={isDownloadingQR}
-                                    className="w-full flex items-center justify-center py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5 hover:shadow-lg transition-all shadow-md disabled:opacity-75 disabled:cursor-not-allowed disabled:transform-none"
+                                <a
+                                    href="/qr.jpeg"
+                                    download={`TroGifts_Merchant_QR_${frontendOrderId}.jpeg`}
+                                    className="w-full flex items-center justify-center py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5 hover:shadow-lg transition-all shadow-md"
                                 >
-                                    {isDownloadingQR ? 'Downloading image to gallery...' : 'Download Full QR to Pay'}
-                                </button>
+                                    Download Full QR to Pay
+                                </a>
                                 <div className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100 flex flex-col space-y-1 text-left">
                                     <p>Merchant: <span className="font-bold text-gray-800 tracking-wide">{merchantName}</span></p>
                                     <p>UPI ID: <span className="font-bold text-gray-800 tracking-wide">{upiId}</span></p>
