@@ -83,17 +83,17 @@ export default function AdminOrders() {
         
         const rows = filteredOrders.map(o => {
             let actualTime = 'N/A';
-            if (o.timestamp) {
-                // If timestamp is firebase object {_seconds, _nanoseconds}
-                if (typeof o.timestamp === 'object' && o.timestamp._seconds) {
-                    actualTime = new Date(o.timestamp._seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                } else if (typeof o.timestamp === 'number') {
-                    actualTime = new Date(o.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                } else if (typeof o.timestamp === 'string') {
-                    actualTime = new Date(o.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                }
-            } else if (o.createdAt) {
-                actualTime = new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            let actualDate = o.date || '';
+
+            // If the date string actually contains time (e.g. full ISO from backend)
+            if (o.date && (o.date.includes('T') || o.date.includes(':'))) {
+                try {
+                    const parsed = new Date(o.date);
+                    if (!isNaN(parsed.getTime())) {
+                        actualDate = parsed.toLocaleDateString();
+                        actualTime = parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                } catch(e) {}
             }
 
             const itemsStr = (o.items || []).map((i, idx) => 
@@ -102,7 +102,7 @@ export default function AdminOrders() {
 
             return [
                 `"${o.id || ''}"`,
-                `"${o.date || ''}"`,
+                `"${actualDate}"`,
                 `"${actualTime}"`,
                 `"${o.crafterId || ''}"`,
                 `"${(o.customerName || '').replace(/"/g, '""')}"`,

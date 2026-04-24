@@ -29,6 +29,7 @@ export default function NewOrder() {
     const [uploadStatusMsg, setUploadStatusMsg] = useState('Verifying active uploads...');
     const [success, setSuccess] = useState(false);
     const [pendingUploads, setPendingUploads] = useState(null);
+    const [isDownloadingQR, setIsDownloadingQR] = useState(false);
     const [upiId, setUpiId] = useState('yourupi@bank');
     const [merchantName, setMerchantName] = useState('Merchant');
     const [merchantCode, setMerchantCode] = useState('');
@@ -137,6 +138,30 @@ export default function NewOrder() {
                 xhr.send(formData);
             } catch (e) { reject(e); }
         });
+    };
+
+    const handleDownloadQR = async (e) => {
+        e.preventDefault();
+        setIsDownloadingQR(true);
+        try {
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${merchantName}${merchantCode ? `&mc=${merchantCode}` : ''}&cu=INR&tn=${txnNote || `Payment for ${frontendOrderId}`}`)}`;
+            const response = await fetch(qrUrl);
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = `TroGifts_QR_${frontendOrderId}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(blobUrl);
+        } catch (error) {
+            console.error('Failed to copy QR code', error);
+            alert('Your browser is blocking the direct download. Please take a screenshot of the QR code instead!');
+        } finally {
+            setIsDownloadingQR(false);
+        }
     };
 
     const compressPaymentScreenshot = (file) => {
@@ -723,15 +748,14 @@ export default function NewOrder() {
                                 />
                             </div>
                             <div className="mt-4 w-full sm:max-w-xs">
-                                <a
-                                    href={`https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${merchantName}${merchantCode ? `&mc=${merchantCode}` : ''}&cu=INR&tn=${txnNote || `Payment for ${frontendOrderId}`}`)}`}
-                                    download="Merchant_QR_Code.png"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="w-full flex items-center justify-center py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5 hover:shadow-lg transition-all shadow-md"
+                                <button
+                                    type="button"
+                                    onClick={handleDownloadQR}
+                                    disabled={isDownloadingQR}
+                                    className="w-full flex items-center justify-center py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5 hover:shadow-lg transition-all shadow-md disabled:opacity-75 disabled:cursor-not-allowed disabled:transform-none"
                                 >
-                                    Download Full QR to Pay
-                                </a>
+                                    {isDownloadingQR ? 'Downloading image to gallery...' : 'Download Full QR to Pay'}
+                                </button>
                                 <div className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100 flex flex-col space-y-1 text-left">
                                     <p>Merchant: <span className="font-bold text-gray-800 tracking-wide">{merchantName}</span></p>
                                     <p>UPI ID: <span className="font-bold text-gray-800 tracking-wide">{upiId}</span></p>
