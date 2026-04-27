@@ -19,7 +19,7 @@ export default function NewOrder() {
     const [frontendOrderId] = useState(() => 'ORD-' + Math.floor(10000 + Math.random() * 90000));
 
     const [items, setItems] = useState([
-        { customerName: '', template: 'Animal Wonderland', quality: 'High Quality', keychain: 'Without Keychain', keychainName: '', address: '', files: [] }
+        { customerName: '', template: 'Animal Wonderland', quality: 'Low Quality', keychain: 'Without Keychain', keychainName: '', address: '', files: [] }
     ]);
 
     const [paymentFile, setPaymentFile] = useState(null);
@@ -87,7 +87,16 @@ export default function NewOrder() {
         let newItems = [...items];
         if (q > items.length) {
             for (let i = items.length; i < q; i++) {
-                newItems.push({ customerName: '', template: 'Animal Wonderland', quality: 'High Quality', keychain: 'Without Keychain', keychainName: '', address: '', files: [] });
+                const baseItem = items[0] || { template: 'Animal Wonderland', quality: 'Low Quality', keychain: 'Without Keychain' };
+                newItems.push({ 
+                    customerName: '', 
+                    template: baseItem.template, 
+                    quality: baseItem.quality, 
+                    keychain: baseItem.keychain, 
+                    keychainName: '', 
+                    address: '', 
+                    files: [] 
+                });
             }
         } else if (q < items.length && q > 0) {
             newItems = newItems.slice(0, q);
