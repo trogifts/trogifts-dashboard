@@ -19,7 +19,7 @@ export default function NewOrder() {
     const [frontendOrderId] = useState(() => 'ORD-' + Math.floor(10000 + Math.random() * 90000));
 
     const [items, setItems] = useState([
-        { customerName: '', template: 'Animal Wonderland', quality: 'Low Quality', keychain: 'Without Keychain', keychainName: '', address: '', files: [] }
+        { customerName: '', customerPhone: '', template: 'Animal Wonderland', quality: 'Low Quality', keychain: 'Without Keychain', keychainName: '', address: '', files: [] }
     ]);
 
     const [paymentFile, setPaymentFile] = useState(null);
@@ -90,6 +90,7 @@ export default function NewOrder() {
                 const baseItem = items[0] || { template: 'Animal Wonderland', quality: 'Low Quality', keychain: 'Without Keychain' };
                 newItems.push({ 
                     customerName: '', 
+                    customerPhone: '',
                     template: baseItem.template, 
                     quality: baseItem.quality, 
                     keychain: baseItem.keychain, 
@@ -450,7 +451,7 @@ export default function NewOrder() {
             const ObjectFinancials = financials();
 
             // Combine all names and templates
-            const allNames = currentItems.map((i, index) => `Item ${index + 1}: ${i.customerName}`).join('\n');
+            const allNames = currentItems.map((i, index) => `Item ${index + 1}: ${i.customerName} (Ph: ${i.customerPhone || 'N/A'})`).join('\n');
             const allTemplates = currentItems.map((i, index) => `Item ${index + 1}: ${i.template} | ${i.quality} | ${i.keychain}${i.keychain === 'With Keychain' ? ` (${i.keychainName})` : ''}`).join('\n');
             const allAddresses = currentItems.map((i, index) => `Item ${index + 1}:\n${i.address}`).join('\n\n--- \n');
 
@@ -588,6 +589,10 @@ export default function NewOrder() {
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">Customer Name</label>
                                         <input type="text" value={item.customerName} onChange={e => updateItem(index, 'customerName', e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border py-2 px-3" placeholder="Name to print/engrave..." />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Customer Phone</label>
+                                        <input type="tel" value={item.customerPhone || ''} onChange={e => updateItem(index, 'customerPhone', e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border py-2 px-3" placeholder="Phone number..." />
                                     </div>
                                     <div className="sm:col-span-2">
                                         <label className="block text-sm font-bold text-gray-800 mb-2">Select Design Template</label>

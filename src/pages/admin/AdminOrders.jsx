@@ -96,21 +96,20 @@ export default function AdminOrders() {
                 } catch(e) {}
             }
 
-            const itemsStr = (o.items || []).map((i, idx) => 
-                `[${idx+1}] Name: ${i.customerName} | Theme: ${i.template} | Quality: ${i.quality} ${i.keychain === 'With Keychain' ? `| Chain: ${i.keychainName}` : ''}`
-            ).join(' || ').replace(/"/g, '""');
+            const namesStr = (o.customerName || '').replace(/"/g, '""');
+            const templatesStr = (o.template || '').replace(/"/g, '""');
 
             return [
                 `"${o.id || ''}"`,
                 `"${actualDate}"`,
                 `"${actualTime}"`,
                 `"${o.crafterId || ''}"`,
-                `"${(o.customerName || '').replace(/"/g, '""')}"`,
+                `"${namesStr}"`,
                 `"${o.quantity || 1}"`,
                 `"${o.price || 0}"`,
                 `"${o.deliveryMethod || ''}"`,
                 `"${o.status || ''}"`,
-                `"${itemsStr}"`
+                `"${templatesStr}"`
             ].join(',');
         });
 
