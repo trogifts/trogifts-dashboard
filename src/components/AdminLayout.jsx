@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Users, Package, Settings, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Package, Settings, LogOut, Menu, X, Wallet } from 'lucide-react';
 import { useState } from 'react';
 
 export default function AdminLayout() {
@@ -12,6 +12,7 @@ export default function AdminLayout() {
     const navigation = [
         { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
         { name: 'Orders', href: '/admin/orders', icon: Package },
+        { name: 'Finances', href: '/admin/finances', icon: Wallet },
         { name: 'Crafters', href: '/admin/crafters', icon: Users },
         { name: 'Settings', href: '/admin/settings', icon: Settings },
     ];

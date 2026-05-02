@@ -16,7 +16,7 @@ export const apiCall = async (action, data = {}, onProgress = null) => {
     }
 
     try {
-        const isGet = ['getOrders', 'getCrafters', 'getDashboardStats'].includes(action);
+        const isGet = ['getOrders', 'getCrafters', 'getDashboardStats', 'getExpenses'].includes(action);
         let response;
 
         if (isGet) {
@@ -127,6 +127,20 @@ const mockApiCall = async (action, data, onProgress) => {
     }
     if (action === 'getDashboardStats') {
         return { totalOrders: 12, totalEarnings: '$240.00', pendingPayout: '$45.00', paidEarnings: '$195.00' };
+    }
+    if (action === 'getExpenses') {
+        return {
+            expenses: [
+                { id: 'EXP-1234', date: '2026-05-01', category: 'Printing', amount: 150, description: 'Photo paper' },
+                { id: 'EXP-1235', date: '2026-05-02', category: 'Post Office', amount: 80, description: 'Speed post for ORD-555' }
+            ]
+        };
+    }
+    if (action === 'addExpense') {
+        return { success: true, id: 'EXP-' + Math.floor(Math.random() * 90000) };
+    }
+    if (action === 'deleteExpense') {
+        return { success: true };
     }
 
     return { success: true };

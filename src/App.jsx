@@ -11,6 +11,7 @@ import AdminLayout from './components/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminCrafters from './pages/admin/AdminCrafters';
+import AdminFinances from './pages/admin/AdminFinances';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -56,6 +57,7 @@ function AppRoutes() {
         <Route index element={<AdminDashboard />} />
         <Route path="orders" element={<AdminOrders />} />
         <Route path="crafters" element={<AdminCrafters />} />
+        <Route path="finances" element={<AdminFinances />} />
         <Route path="settings" element={<div className="p-8">Settings (WIP)</div>} />
       </Route>
     </Routes>

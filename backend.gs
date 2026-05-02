@@ -31,6 +31,10 @@ function doPost(e) {
       return successResponse(handleSubmitPayout(data), headers);
     } else if (action === 'updateCrafterStatus') {
       return handleUpdateCrafterStatus(data, headers);
+    } else if (action === 'addExpense') {
+      return handleAddExpense(data, headers);
+    } else if (action === 'deleteExpense') {
+      return handleDeleteExpense(data, headers);
     } else {
       return errorResponse('Invalid action', headers);
     }
@@ -58,6 +62,8 @@ function doGet(e) {
       return handleGetCrafters(headers);
     } else if (action === 'getDashboardStats') {
       return handleGetDashboardStats(e.parameter, headers);
+    } else if (action === 'getExpenses') {
+      return handleGetExpenses(headers);
     }
   } catch (error) {
     return errorResponse(error.toString(), headers);
@@ -491,4 +497,58 @@ function successResponse(data, headers) {
 function errorResponse(msg, headers) {
   return ContentService.createTextOutput(JSON.stringify({ error: msg }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ----------------- Finances & Expenses -----------------
+
+function handleGetExpenses(headers) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Expenses');
+  if (!sheet) return errorResponse('Expenses sheet not found. Please create one.', headers);
+  
+  const rows = sheet.getDataRange().getValues();
+  const expenses = [];
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (!rows[i][0]) continue;
+    expenses.push({
+      id: rows[i][0],
+      date: typeof rows[i][1] === 'object' ? rows[i][1].toISOString().split('T')[0] : rows[i][1],
+      category: rows[i][2],
+      amount: rows[i][3],
+      description: rows[i][4]
+    });
+  }
+  expenses.reverse();
+  return successResponse({ expenses }, headers);
+}
+
+function handleAddExpense(data, headers) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Expenses');
+  if (!sheet) return errorResponse('Expenses sheet not found. Please create one.', headers);
+  
+  const newId = 'EXP-' + Math.floor(10000 + Math.random() * 90000);
+  
+  sheet.appendRow([
+    newId,
+    data.date,
+    data.category,
+    data.amount,
+    data.description || ''
+  ]);
+  
+  return successResponse({ success: true, id: newId }, headers);
+}
+
+function handleDeleteExpense(data, headers) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Expenses');
+  if (!sheet) return errorResponse('Expenses sheet not found', headers);
+  
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.id) {
+      sheet.deleteRow(i + 1);
+      return successResponse({ success: true }, headers);
+    }
+  }
+  return errorResponse('Expense not found', headers);
 }
