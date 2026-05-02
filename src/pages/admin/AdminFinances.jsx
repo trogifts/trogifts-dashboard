@@ -32,6 +32,21 @@ const useAnimatedNumber = (end, duration = 1500) => {
     return value;
 };
 
+// Helper for dd/mm/yy formatting
+const formatToDDMMYY = (dateStr) => {
+    if (!dateStr) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const [y, m, d] = dateStr.split('-');
+        return `${d}/${m}/${y.slice(-2)}`;
+    }
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = String(date.getFullYear()).slice(-2);
+    return `${d}/${m}/${y}`;
+};
+
 export default function AdminFinances() {
     const [orders, setOrders] = useState([]);
     const [expenses, setExpenses] = useState([]);
@@ -41,6 +56,7 @@ export default function AdminFinances() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [sheetMissing, setSheetMissing] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
+    const [filterCategory, setFilterCategory] = useState('All');
 
     const [newExpense, setNewExpense] = useState({
         date: new Date().toISOString().split('T')[0],
@@ -142,6 +158,14 @@ export default function AdminFinances() {
     const animatedBankBalance = useAnimatedNumber(Math.abs(bankBalance), 2000);
     const animatedOrdersAmount = useAnimatedNumber(totalExpectedRevenue, 2500);
 
+    // --- Filtering ---
+    const filteredExpenses = expenses.filter(expense => {
+        if (filterCategory === 'All') return true;
+        if (filterCategory === 'Income') return expense.category === 'Income (Bank Deposit)';
+        if (filterCategory === 'Expenses') return expense.category !== 'Income (Bank Deposit)';
+        return expense.category === filterCategory;
+    });
+
     const generatePDF = () => {
         const doc = new jsPDF();
         
@@ -158,7 +182,7 @@ export default function AdminFinances() {
         
         expenses.forEach(expense => {
             const expenseData = [
-                expense.date,
+                formatToDDMMYY(expense.date),
                 expense.category,
                 expense.description || '-',
                 `${expense.category === 'Income (Bank Deposit)' ? '+' : '-'} Rs. ${Number(expense.amount).toLocaleString()}`
@@ -304,8 +328,18 @@ export default function AdminFinances() {
                         <p className="text-sm text-gray-500 mt-1 font-medium">History of your manually recorded expenses.</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
+                        <select 
+                            value={filterCategory}
+                            onChange={(e) => setFilterCategory(e.target.value)}
+                            className="bg-white border border-gray-200 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-black transition-all cursor-pointer"
+                        >
+                            <option value="All">All Records</option>
+                            <option value="Income">Income Only</option>
+                            <option value="Expenses">Expenses Only</option>
+                            {categories.filter(c => c !== 'Income (Bank Deposit)').map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
                         <div className="text-[10px] font-black bg-gray-900 text-white px-3 py-1.5 rounded-full uppercase tracking-widest shadow-md inline-flex items-center w-fit">
-                            {expenses.length} Records
+                            {filteredExpenses.length} Records
                         </div>
                         {expenses.length > 0 && (
                             <button 
@@ -350,7 +384,12 @@ export default function AdminFinances() {
                     </div>
                 ) : (
                     <div className="space-y-3 pb-8">
-                        {expenses.map((expense, index) => (
+                        {filteredExpenses.length === 0 ? (
+                            <div className="text-center py-10 bg-white/50 backdrop-blur-sm rounded-2xl border border-dashed border-gray-200">
+                                <p className="text-gray-500 font-medium">No records found for this filter.</p>
+                            </div>
+                        ) : (
+                            filteredExpenses.map((expense, index) => (
                             <div 
                                 key={expense.id} 
                                 className="group bg-white/90 backdrop-blur-md rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-gray-100/80 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
@@ -364,7 +403,7 @@ export default function AdminFinances() {
                                     <div>
                                         <h4 className="text-sm font-black text-gray-900 mb-1 flex items-center gap-2 flex-wrap">
                                             {expense.category}
-                                            <span className="text-[9px] font-black text-gray-400 bg-gray-100/80 px-2 py-0.5 rounded-md uppercase tracking-widest">{expense.date}</span>
+                                            <span className="text-[9px] font-black text-gray-400 bg-gray-100/80 px-2 py-0.5 rounded-md uppercase tracking-widest">{formatToDDMMYY(expense.date)}</span>
                                         </h4>
                                         <p className="text-sm text-gray-500 font-medium line-clamp-1">{expense.description || <span className="italic opacity-50 font-normal">No description provided</span>}</p>
                                     </div>
@@ -387,7 +426,7 @@ export default function AdminFinances() {
                                     </button>
                                 </div>
                             </div>
-                        ))}
+                        )))}
                     </div>
                 )}
             </div>
