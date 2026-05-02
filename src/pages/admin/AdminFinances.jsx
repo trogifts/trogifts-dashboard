@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, IndianRupee, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, FileText, X } from 'lucide-react';
+import { Plus, Trash2, IndianRupee, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, FileText, X, Download } from 'lucide-react';
 import { apiCall } from '../../api';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 // Custom hook for number counting animation
 const useAnimatedNumber = (end, duration = 1500) => {
@@ -140,6 +142,62 @@ export default function AdminFinances() {
     const animatedBankBalance = useAnimatedNumber(Math.abs(bankBalance), 2000);
     const animatedOrdersAmount = useAnimatedNumber(totalExpectedRevenue, 2500);
 
+    const generatePDF = () => {
+        const doc = new jsPDF();
+        
+        // Header
+        doc.setFontSize(20);
+        doc.text("Expense Ledger Report", 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+        
+        // Table Data
+        const tableColumn = ["Date", "Category", "Description", "Amount (Rs)"];
+        const tableRows = [];
+        
+        expenses.forEach(expense => {
+            const expenseData = [
+                expense.date,
+                expense.category,
+                expense.description || '-',
+                `${expense.category === 'Income (Bank Deposit)' ? '+' : '-'} Rs. ${Number(expense.amount).toLocaleString()}`
+            ];
+            tableRows.push(expenseData);
+        });
+        
+        // Add Summary row at bottom
+        tableRows.push(['', '', 'Total Expenses', `Rs. ${totalExpenses.toLocaleString()}`]);
+        tableRows.push(['', '', 'Bank Balance (Profit)', `Rs. ${bankBalance.toLocaleString()}`]);
+
+        doc.autoTable({
+            startY: 40,
+            head: [tableColumn],
+            body: tableRows,
+            theme: 'striped',
+            headStyles: { fillColor: [17, 24, 39] },
+            didParseCell: function(data) {
+                // If it's the total row, make it bold
+                if (data.row.index >= expenses.length) {
+                    data.cell.styles.fontStyle = 'bold';
+                    if (data.row.index === expenses.length + 1) {
+                         data.cell.styles.textColor = [16, 185, 129]; // green for bank balance
+                    }
+                } else if (data.column.index === 3) {
+                    if (expenses[data.row.index].category === 'Income (Bank Deposit)') {
+                        data.cell.styles.textColor = [16, 185, 129]; // green
+                    } else {
+                        data.cell.styles.textColor = [239, 68, 68]; // red
+                    }
+                }
+            }
+        });
+        
+        doc.save(`Expense_Ledger_${new Date().toISOString().split('T')[0]}.pdf`);
+        setToastMessage("PDF downloaded successfully!");
+        setTimeout(() => setToastMessage(null), 3000);
+    };
+
 
     if (loading) {
         return (
@@ -245,8 +303,19 @@ export default function AdminFinances() {
                         <h2 className="text-xl font-black text-gray-900 tracking-tight">Expense Ledger</h2>
                         <p className="text-sm text-gray-500 mt-1 font-medium">History of your manually recorded expenses.</p>
                     </div>
-                    <div className="text-[10px] font-black bg-gray-900 text-white px-3 py-1.5 rounded-full uppercase tracking-widest shadow-md inline-flex items-center w-fit">
-                        {expenses.length} Records
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="text-[10px] font-black bg-gray-900 text-white px-3 py-1.5 rounded-full uppercase tracking-widest shadow-md inline-flex items-center w-fit">
+                            {expenses.length} Records
+                        </div>
+                        {expenses.length > 0 && (
+                            <button 
+                                onClick={generatePDF}
+                                className="flex items-center gap-1.5 text-xs font-bold bg-white text-gray-700 px-3 py-1.5 rounded-full border border-gray-200 hover:bg-gray-50 hover:text-gray-900 hover:shadow-sm transition-all group"
+                            >
+                                <Download size={14} className="group-hover:-translate-y-0.5 transition-transform" />
+                                Download PDF
+                            </button>
+                        )}
                     </div>
                 </div>
                 
