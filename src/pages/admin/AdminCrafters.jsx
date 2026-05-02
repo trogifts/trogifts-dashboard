@@ -18,7 +18,23 @@ export default function AdminCrafters() {
         async function loadCrafters() {
             try {
                 const data = await apiCall('getCrafters');
-                setCrafters(data.crafters || []);
+                let list = data.crafters || [];
+                
+                // Fetch stats for all crafters to correctly calculate pending payout based on Total Earnings
+                list = await Promise.all(list.map(async (c) => {
+                    try {
+                        const stats = await apiCall('getDashboardStats', { crafterId: c.referral });
+                        const total = Number(String(stats.totalEarnings).replace(/[^0-9.-]+/g, "")) || 0;
+                        const paid = Number(String(stats.paidEarnings).replace(/[^0-9.-]+/g, "")) || 0;
+                        let pending = total - paid;
+                        if (pending < 0) pending = 0;
+                        return { ...c, pendingPayout: pending };
+                    } catch (e) {
+                        return c;
+                    }
+                }));
+                
+                setCrafters(list);
             } catch (err) {
                 console.error("Failed to load crafters", err);
             } finally {
@@ -76,10 +92,12 @@ export default function AdminCrafters() {
         setSelectedCrafter(crafter);
         setLoadingStats(true);
         try {
-            // Using the existing dashboard endpoint designed for the crafter, but bypassing auth check manually in sheet fetching logic natively! 
-            // Wait, does getDashboardStats require the caller to BE the crafter?
-            // No, the backend API is entirely stateless for fetching Google Sheet data.
             const data = await apiCall('getDashboardStats', { crafterId: crafter.referral });
+            const total = Number(String(data.totalEarnings).replace(/[^0-9.-]+/g, "")) || 0;
+            const paid = Number(String(data.paidEarnings).replace(/[^0-9.-]+/g, "")) || 0;
+            let pending = total - paid;
+            if (pending < 0) pending = 0;
+            data.pendingPayout = '₹' + pending;
             setCrafterStats(data);
         } catch (err) {
             console.error("Failed to load stats", err);
@@ -99,8 +117,16 @@ export default function AdminCrafters() {
             await apiCall('submitPayout', { crafterId, amount: Number(payoutAmount) });
             // Refresh stats!
             const data = await apiCall('getDashboardStats', { crafterId });
+            const total = Number(String(data.totalEarnings).replace(/[^0-9.-]+/g, "")) || 0;
+            const paid = Number(String(data.paidEarnings).replace(/[^0-9.-]+/g, "")) || 0;
+            let pending = total - paid;
+            if (pending < 0) pending = 0;
+            data.pendingPayout = '₹' + pending;
             setCrafterStats(data);
             setPayoutAmount('');
+            
+            // Also update the main list
+            setCrafters(prev => prev.map(c => c.referral === crafterId ? { ...c, pendingPayout: pending } : c));
         } catch (err) {
             console.error(err);
             alert("Failed to record payout.");

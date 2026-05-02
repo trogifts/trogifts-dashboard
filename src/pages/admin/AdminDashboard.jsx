@@ -41,7 +41,7 @@ export default function AdminDashboard() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 {statCards.map((stat, index) => (
-                    <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4">
+                    <div key={index} className={`animate-reveal bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4 hover:shadow-md transition-shadow delay-${index * 100}`}>
                         <div className={`p-3 rounded-xl ${stat.bg}`}>
                             <stat.icon size={24} className={stat.color} />
                         </div>
@@ -53,7 +53,7 @@ export default function AdminDashboard() {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+            <div className="animate-reveal delay-300 grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="px-6 py-5 border-b border-gray-100">
                         <h3 className="text-lg font-semibold text-gray-900">Recent API Activity</h3>
