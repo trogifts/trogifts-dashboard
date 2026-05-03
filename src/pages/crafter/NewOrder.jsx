@@ -605,6 +605,7 @@ export default function NewOrder() {
                                                 >
                                                     <option value="Animal Wonderland">Animal Wonderland</option>
                                                     <option value="Back to School">Back to School</option>
+                                                    <option value="Car">Car</option>
                                                     <option value="Fairy Dream">Fairy Dream</option>
                                                     <option value="Pixel">Pixel</option>
                                                     <option value="SuperHero">SuperHero</option>
@@ -618,7 +619,7 @@ export default function NewOrder() {
                                                     <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mt-3">Loading Design</span>
                                                 </div>
                                                 <img 
-                                                    src={`/${item.template}.jpeg`} 
+                                                    src={item.template === 'Car' ? '/car.png' : `/${item.template}.jpeg`} 
                                                     alt={`Preview of ${item.template}`} 
                                                     loading="lazy"
                                                     className="absolute inset-0 w-full h-full object-cover z-10"
