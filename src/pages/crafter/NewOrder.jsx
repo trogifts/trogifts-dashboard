@@ -330,12 +330,24 @@ export default function NewOrder() {
         }
 
         let commission = 0;
-        if (formData.deliveryMethod === 'Deliver to Customer' && !formData.sameAddress) {
-            commission = q * 40; // standard 40 per
-        } else {
-            // Deliver to Crafter OR Deliver to Customer (same address)
-            commission = q === 1 ? 40 : (q * 40) + (20 * (q - 1));
-        }
+        items.slice(0, q).forEach((item, index) => {
+            let itemComm = 40;
+            // 199 item gets 30 commission
+            if (item.quality === 'Low Quality' && item.keychain === 'Without Keychain') {
+                itemComm = 30;
+            }
+            
+            if (formData.deliveryMethod === 'Deliver to Customer' && !formData.sameAddress) {
+                commission += itemComm;
+            } else {
+                // Deliver to Crafter OR Deliver to Customer (same address)
+                if (index === 0) {
+                    commission += itemComm;
+                } else {
+                    commission += itemComm + 20;
+                }
+            }
+        });
         
         if (isCheatCode) {
             price = 1;
