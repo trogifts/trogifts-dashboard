@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, IndianRupee, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, FileText, X, Download } from 'lucide-react';
+import { Plus, Trash2, IndianRupee, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, FileText, X, Download, Edit2 } from 'lucide-react';
 import { apiCall } from '../../api';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -56,6 +56,7 @@ export default function AdminFinances() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [sheetMissing, setSheetMissing] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
+    const [editingId, setEditingId] = useState(null);
     const [filterCategory, setFilterCategory] = useState('All');
 
     const [newExpense, setNewExpense] = useState({
@@ -98,23 +99,55 @@ export default function AdminFinances() {
         setLoading(false);
     }
 
-    const handleAddExpense = async (e) => {
+    const openAddModal = () => {
+        setEditingId(null);
+        setNewExpense({
+            date: new Date().toISOString().split('T')[0],
+            category: 'Printing',
+            amount: '',
+            description: ''
+        });
+        setIsModalOpen(true);
+    };
+
+    const openEditModal = (expense) => {
+        setEditingId(expense.id);
+        setNewExpense({
+            date: expense.date,
+            category: expense.category,
+            amount: expense.amount,
+            description: expense.description || ''
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleSaveExpense = async (e) => {
         e.preventDefault();
         if (!newExpense.amount || !newExpense.category) return;
         
         setActionLoading(true);
         try {
-            const res = await apiCall('addExpense', newExpense);
-            if (res.success) {
-                setExpenses([{ ...newExpense, id: res.id }, ...expenses]);
-                setNewExpense({ ...newExpense, amount: '', description: '', category: 'Printing' });
-                setIsModalOpen(false);
-                setToastMessage('Expense added successfully!');
-                setTimeout(() => setToastMessage(null), 3000);
+            if (editingId) {
+                const res = await apiCall('editExpense', { id: editingId, ...newExpense });
+                if (res.success) {
+                    setExpenses(expenses.map(exp => exp.id === editingId ? { id: editingId, ...newExpense } : exp));
+                    setIsModalOpen(false);
+                    setToastMessage('Expense updated successfully!');
+                    setTimeout(() => setToastMessage(null), 3000);
+                }
+            } else {
+                const res = await apiCall('addExpense', newExpense);
+                if (res.success) {
+                    setExpenses([{ ...newExpense, id: res.id }, ...expenses]);
+                    setNewExpense({ date: new Date().toISOString().split('T')[0], amount: '', description: '', category: 'Printing' });
+                    setIsModalOpen(false);
+                    setToastMessage('Expense added successfully!');
+                    setTimeout(() => setToastMessage(null), 3000);
+                }
             }
         } catch (err) {
             console.error(err);
-            setToastMessage('Failed to add expense.');
+            setToastMessage(`Failed to ${editingId ? 'update' : 'add'} expense.`);
             setTimeout(() => setToastMessage(null), 3000);
         } finally {
             setActionLoading(false);
@@ -376,7 +409,7 @@ export default function AdminFinances() {
                         <h3 className="text-xl font-black text-gray-900">No expenses recorded yet</h3>
                         <p className="text-sm text-gray-500 mt-2 mb-8 font-medium max-w-sm">Your ledger is completely empty. Start tracking your cash flow by recording your first transaction.</p>
                         <button 
-                            onClick={() => setIsModalOpen(true)} 
+                            onClick={openAddModal} 
                             className="text-sm font-bold bg-gray-900 text-white px-6 py-3 rounded-full shadow-[0_10px_20px_rgba(0,0,0,0.1)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.2)] hover:-translate-y-1 transition-all duration-300"
                         >
                             Record First Entry
@@ -414,6 +447,13 @@ export default function AdminFinances() {
                                         {expense.category === 'Income (Bank Deposit)' ? '+' : '-'}₹{Number(expense.amount).toLocaleString()}
                                     </div>
                                     <button 
+                                        onClick={() => openEditModal(expense)}
+                                        disabled={actionLoading}
+                                        className="w-9 h-9 rounded-full flex items-center justify-center text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-all duration-300 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 hover:scale-110 disabled:opacity-50 mr-2"
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                    <button 
                                         onClick={() => handleDeleteExpense(expense.id)}
                                         disabled={actionLoading}
                                         className="w-9 h-9 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all duration-300 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 hover:scale-110 disabled:opacity-50"
@@ -435,7 +475,7 @@ export default function AdminFinances() {
             <div className="fixed bottom-8 right-8 z-40 flex flex-col items-end animate-fade-in-up">
                 <div className="absolute inset-0 bg-gray-900 rounded-full blur-xl opacity-20 animate-pulse-slow"></div>
                 <button 
-                    onClick={() => setIsModalOpen(true)} 
+                    onClick={openAddModal} 
                     className="relative flex items-center justify-center gap-2 px-7 py-4 bg-gray-900 hover:bg-black text-white rounded-full shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_50px_-10px_rgba(0,0,0,0.6)] hover:-translate-y-1 transition-all duration-300 active:scale-95 group border border-gray-800"
                 >
                     <Plus size={22} className="group-hover:rotate-90 transition-transform duration-500 text-white" />
@@ -451,7 +491,7 @@ export default function AdminFinances() {
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col relative z-10 transform transition-all sm:my-8 animate-in fade-in zoom-in-95 duration-200">
                         <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
                             <h3 className="text-lg font-semibold text-gray-900">
-                                Record Expense
+                                {editingId ? 'Edit Record' : 'Record Expense'}
                             </h3>
                             <button 
                                 onClick={() => setIsModalOpen(false)} 
@@ -466,7 +506,7 @@ export default function AdminFinances() {
                                 const isIncome = newExpense.category === 'Income (Bank Deposit)';
                                 const focusClass = isIncome ? 'focus:border-green-500 focus:ring-green-500' : 'focus:border-red-500 focus:ring-red-500';
                                 return (
-                                <form onSubmit={handleAddExpense} className="space-y-5">
+                                <form onSubmit={handleSaveExpense} className="space-y-5">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Date incurred</label>
                                         <input 
@@ -526,7 +566,7 @@ export default function AdminFinances() {
                                         >
                                             {actionLoading ? (
                                                 <span className="flex items-center"><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Saving...</span>
-                                            ) : (isIncome ? 'Save Income Record' : 'Save Expense Record')}
+                                            ) : (editingId ? 'Save Changes' : (isIncome ? 'Save Income Record' : 'Save Expense Record'))}
                                         </button>
                                     </div>
                                 </form>

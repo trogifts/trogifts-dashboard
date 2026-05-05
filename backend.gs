@@ -35,6 +35,8 @@ function doPost(e) {
       return handleAddExpense(data, headers);
     } else if (action === 'deleteExpense') {
       return handleDeleteExpense(data, headers);
+    } else if (action === 'editExpense') {
+      return handleEditExpense(data, headers);
     } else {
       return errorResponse('Invalid action', headers);
     }
@@ -547,6 +549,23 @@ function handleDeleteExpense(data, headers) {
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === data.id) {
       sheet.deleteRow(i + 1);
+      return successResponse({ success: true }, headers);
+    }
+  }
+  return errorResponse('Expense not found', headers);
+}
+
+function handleEditExpense(data, headers) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Expenses');
+  if (!sheet) return errorResponse('Expenses sheet not found', headers);
+  
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.id) {
+      sheet.getRange(i + 1, 2).setValue(data.date);
+      sheet.getRange(i + 1, 3).setValue(data.category);
+      sheet.getRange(i + 1, 4).setValue(data.amount);
+      sheet.getRange(i + 1, 5).setValue(data.description || '');
       return successResponse({ success: true }, headers);
     }
   }
