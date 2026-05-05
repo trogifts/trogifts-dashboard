@@ -100,9 +100,13 @@ export default function AdminFinances() {
     }
 
     const openAddModal = () => {
+        const localDate = new Date();
+        const yyyy = localDate.getFullYear();
+        const mm = String(localDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(localDate.getDate()).padStart(2, '0');
         setEditingId(null);
         setNewExpense({
-            date: new Date().toISOString().split('T')[0],
+            date: `${yyyy}-${mm}-${dd}`,
             category: 'Printing',
             amount: '',
             description: ''
@@ -139,7 +143,9 @@ export default function AdminFinances() {
                 const res = await apiCall('addExpense', newExpense);
                 if (res.success) {
                     setExpenses([{ ...newExpense, id: res.id }, ...expenses]);
-                    setNewExpense({ date: new Date().toISOString().split('T')[0], amount: '', description: '', category: 'Printing' });
+                    const d = new Date();
+                    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    setNewExpense({ date: dateStr, amount: '', description: '', category: 'Printing' });
                     setIsModalOpen(false);
                     setToastMessage('Expense added successfully!');
                     setTimeout(() => setToastMessage(null), 3000);

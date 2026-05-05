@@ -189,7 +189,7 @@ function handleGetOrders(params, headers) {
       status: row[6],
       photoUrl: row[7],
       designUrl: row[8],
-      date: typeof row[9] === 'object' ? row[9].toISOString().split('T')[0] : row[9],
+      date: typeof row[9] === 'object' ? Utilities.formatDate(row[9], Session.getScriptTimeZone(), "yyyy-MM-dd") : row[9],
       deliveryMethod: row[10],
       quantity: row[11],
       price: row[12],
@@ -396,7 +396,7 @@ function handleGetDashboardStats(params, headers) {
             recentPayouts.push({
                 id: pRows[i][0],
                 amount: amt,
-                date: typeof pRows[i][3] === 'object' ? pRows[i][3].toISOString().split('T')[0] : pRows[i][3]
+                date: typeof pRows[i][3] === 'object' ? Utilities.formatDate(pRows[i][3], Session.getScriptTimeZone(), "yyyy-MM-dd") : pRows[i][3]
             });
         } else if (!params.crafterId) {
             paidEarningsNum += amt;
@@ -514,7 +514,7 @@ function handleGetExpenses(headers) {
     if (!rows[i][0]) continue;
     expenses.push({
       id: rows[i][0],
-      date: typeof rows[i][1] === 'object' ? rows[i][1].toISOString().split('T')[0] : rows[i][1],
+      date: typeof rows[i][1] === 'object' ? Utilities.formatDate(rows[i][1], Session.getScriptTimeZone(), "yyyy-MM-dd") : rows[i][1],
       category: rows[i][2],
       amount: rows[i][3],
       description: rows[i][4]
